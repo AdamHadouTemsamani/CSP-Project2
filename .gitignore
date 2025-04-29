@@ -427,6 +427,12 @@ Cargo.lock
 .history
 .ionide
 
+# Ignore all VS Code workspace and settings
+.vscode/
+*.code-workspace
+
+
+
 # End of https://www.toptal.com/developers/gitignore/api/csharp,visualstudiocode,rust
 
 .DS_Store
