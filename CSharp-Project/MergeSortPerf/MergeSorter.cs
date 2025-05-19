@@ -39,15 +39,26 @@ public static class MergeSorter
 
         while (i < leftLength && j < rightLength)
         {
-            arr[k++] = (leftTemp[i] <= rightTemp[j]) ? leftTemp[i++] : rightTemp[j++];
+            if (leftTemp[i] <= rightTemp[j])
+            {
+                arr[k++] = leftTemp[i++];
+            }
+            else
+            {
+                arr[k++] = rightTemp[j++];
+            }
         }
-        while (i < leftLength)
+
+        if (i < leftLength)
         {
-            arr[k++] = leftTemp[i++];
+            Array.Copy(leftTemp, i, arr, k, leftLength - i);
         }
-        while (j < rightLength)
+
+        k += leftLength - i;
+
+        if (j < rightLength)
         {
-            arr[k++] = rightTemp[j++];
+            Array.Copy(rightTemp, j, arr, k, rightLength - j);
         }
     }
 }
