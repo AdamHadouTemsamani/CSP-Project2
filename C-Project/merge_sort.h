@@ -3,16 +3,14 @@
 
 #include <uv.h>
 
-// Original merge-sort:
-void merge(int arr[], int left, int mid, int right);
-void merge_sort(int arr[], int left, int right);
+void merge(uint32_t arr[], size_t left, size_t mid, size_t right);
+void merge_sort(uint32_t arr[], size_t left, size_t right);
 
 // libuv-based parallel merge-sort:
-void merge_sort_uv(int *arr,
-                   int left,
-                   int right,
+void merge_sort_uv(uint32_t *arr,
+                   size_t left,
+                   size_t right,
                    uv_loop_t *loop,
-                   uv_mutex_t *mutex,
-                   int *counter);
+                   uv_mutex_t *mutex);
 
 #endif // MERGE_SORT_H
