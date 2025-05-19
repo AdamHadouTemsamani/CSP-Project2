@@ -1,18 +1,16 @@
 #ifndef MERGE_SORT_H
 #define MERGE_SORT_H
 
-#include <uv.h>
+#include <stdint.h>
+#include <stddef.h>
 
-// Original merge-sort:
-void merge(int arr[], int left, int mid, int right);
-void merge_sort(int arr[], int left, int right);
+// Cutoff for spawning tasks; below this, sort inline
+#define MERGE_SORT_OMP_THRESHOLD 1024
 
-// libuv-based parallel merge-sort:
-void merge_sort_uv(int *arr,
-                   int left,
-                   int right,
-                   uv_loop_t *loop,
-                   uv_mutex_t *mutex,
-                   int *counter);
+// Sequential merge of a[left..mid-1] and a[mid..right-1]
+void merge(uint32_t *a, size_t left, size_t mid, size_t right);
+
+// OpenMP-driven parallel merge sort
+void parallel_merge_sort_omp(uint32_t *a, size_t n);
 
 #endif // MERGE_SORT_H

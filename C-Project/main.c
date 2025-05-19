@@ -1,69 +1,45 @@
-#include "merge_sort.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
-#include <uv.h>
-#include <string.h>
+#include <omp.h>
+#include "merge_sort.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
     if (argc < 3) {
         fprintf(stderr, "Usage: %s <maxThreads> <arraySize>\n", argv[0]);
         return 1;
     }
-    int maxThreads  = atoi(argv[1]);
-    int arraySize   = atoi(argv[2]);
-    if (maxThreads < 1 || arraySize < 1) {
+    int max_threads = atoi(argv[1]);
+    size_t n = (size_t)atoll(argv[2]);
+    if (max_threads < 1 || n < 1) {
         fprintf(stderr, "Invalid arguments\n");
         return 1;
     }
 
-    // 1) Control libuv thread‑pool size
-    char envbuf[32];
-    snprintf(envbuf, sizeof(envbuf), "UV_THREADPOOL_SIZE=%d", maxThreads);
-    putenv(strdup(envbuf));  // strdup so memory remains valid
-
-    // 2) Read exactly arraySize integers
-    const char *in_path = "../random_int_list.txt";
-    FILE *fin = fopen(in_path, "r");
-    if (!fin) {
-        perror("fopen input file");
+    // Read binary input
+    uint32_t *a = malloc(n * sizeof *a);
+    FILE *f = fopen("../random_integers.bin", "rb");
+    if (!f || fread(a, sizeof *a, n, f) != n) {
+        perror("reading input");
         return 1;
     }
-    int *data = malloc(arraySize * sizeof(int));
-    for (int i = 0; i < arraySize; i++) {
-        if (fscanf(fin, "%d\n", &data[i]) != 1) {
-            fprintf(stderr, "Size mismatch: need %d ints, got %d\n",
-                    arraySize, i);
-            return 1;
-        }
-    }
-    fclose(fin);
+    fclose(f);
 
-    // 3) Prepare libuv loop and sync primitives
-    uv_loop_t *loop = uv_default_loop();
-    uv_mutex_t mutex;
-    uv_mutex_init(&mutex);
-    int counter = 0;
+    omp_set_num_threads(max_threads);
 
-    // 4) Time the parallel merge‑sort
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
-    merge_sort_uv(data, 0, arraySize - 1, loop, &mutex, &counter);
-    uv_run(loop, UV_RUN_DEFAULT);
+    #pragma omp parallel
+    #pragma omp single nowait
+    parallel_merge_sort_omp(a, n);
 
     clock_gettime(CLOCK_MONOTONIC, &t1);
-    double secs = (t1.tv_sec - t0.tv_sec)
-                + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
-    double mips = (arraySize / secs) / 1e6;
+    double secs = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
+    double mips = (n / secs) / 1e6;
+    printf("%d,%zu,%.6f,%.3f\n", max_threads, n, secs, mips);
 
-    // 5) Print to stdout (CSV line)
-    //    maxThreads,arraySize,seconds,MIps
-    printf("%d,%d,%.6f,%.3f\n",
-           maxThreads, arraySize, secs, mips);
-
-    // cleanup
-    uv_mutex_destroy(&mutex);
-    free(data);
+    free(a);
     return 0;
 }
