@@ -490,6 +490,15 @@ dkms.conf
 .history
 .ionide
 
+# IDE settings
+.vscode/
+*.code-workspace
+
+# Rider/IntelliJ IDEA
+.idea/
+CSharp-Project/.idea/
+
+
 # End of https://www.toptal.com/developers/gitignore/api/csharp,visualstudiocode,rust
 
 .DS_Store
