@@ -54,6 +54,17 @@ public static class Program
         MergeSorter.SortAsync(integers).GetAwaiter().GetResult();
         sw.Stop();
 
+        uint last = 0;
+
+        for (var i = 0; i < arraySize; i++)
+        {
+            if (integers[i] < last)
+            {
+                Console.WriteLine("Array not sorted at index {0}: {1} < {2}", i, integers[i], last);
+                return;
+            }
+        }
+
         // Converting to million items sorted per second (MI/s)
         double secs = sw.Elapsed.TotalSeconds;
         double mips = arraySize / secs / 1_000_000.0;

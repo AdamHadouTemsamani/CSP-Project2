@@ -29,7 +29,6 @@ int main(int argc, char *argv[]) {
     FILE *file = fopen(in_path, "r");
     if (!file) {
         perror("Expected to find file random_integers.bin");
-        fclose(file);
         return 1;
     }
     uint32_t *integers = malloc(array_size * sizeof(uint32_t));
@@ -55,6 +54,17 @@ int main(int argc, char *argv[]) {
     uv_run(loop, UV_RUN_DEFAULT);
 
     clock_gettime(CLOCK_MONOTONIC, &t1);
+
+    uint32_t last = 0;
+    for (size_t i = 0; i < array_size; i++) {
+        if (integers[i] < last) {
+            fprintf(stderr, "Array not sorted at index %zu: %u < %u\n", i, integers[i], last);
+            free(integers);
+            return 1;
+        }
+        last = integers[i];
+    }
+
     double secs = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
     double mips = (array_size / secs) / 1e6;
 
