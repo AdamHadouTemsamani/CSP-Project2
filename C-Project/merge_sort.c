@@ -9,8 +9,8 @@ void merge(uint32_t *a, size_t left, size_t mid, size_t right) {
     uint32_t *L = malloc(n1 * sizeof *L);
     uint32_t *R = malloc(n2 * sizeof *R);
 
-    memcpy(L, a + left, n1 * sizeof *L);
-    memcpy(R, a + mid,  n2 * sizeof *R);
+    memcpy(L, &a[left], n1 * sizeof *L);
+    memcpy(R, &a[mid],  n2 * sizeof *R);
 
     size_t i = 0, j = 0, k = left;
     while (i < n1 && j < n2) {
@@ -22,16 +22,17 @@ void merge(uint32_t *a, size_t left, size_t mid, size_t right) {
     free(R);
 }
 
-void parallel_merge_sort_omp(uint32_t *a, size_t n) {
-    if (n <= 1) return;
-    size_t mid = n / 2;
+void parallel_merge_sort_omp(uint32_t *a, size_t left, size_t right) {
+    if (right - left <= 1) return;
 
-    #pragma omp task shared(a) if(n > MERGE_SORT_OMP_THRESHOLD)
-    parallel_merge_sort_omp(a, mid);
+    size_t mid = left + (right - left) / 2;
 
-    #pragma omp task shared(a) if(n > MERGE_SORT_OMP_THRESHOLD)
-    parallel_merge_sort_omp(a + mid, n - mid);
+    #pragma omp task shared(a) if (right - left > MERGE_SORT_OMP_THRESHOLD)
+    parallel_merge_sort_omp(a, left, mid);
+
+    #pragma omp task shared(a) if (right - left > MERGE_SORT_OMP_THRESHOLD)
+    parallel_merge_sort_omp(a, mid, right);
 
     #pragma omp taskwait
-    merge(a, 0, mid, n);
+    merge(a, left, mid, right);
 }

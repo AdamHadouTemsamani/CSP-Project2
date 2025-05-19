@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Read binary input
+    // Load input from file
     uint32_t *a = malloc(n * sizeof *a);
     FILE *f = fopen("../random_integers.bin", "rb");
     if (!f || fread(a, sizeof *a, n, f) != n) {
@@ -32,8 +32,10 @@ int main(int argc, char **argv) {
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
     #pragma omp parallel
-    #pragma omp single nowait
-    parallel_merge_sort_omp(a, n);
+    {
+        #pragma omp single nowait
+        parallel_merge_sort_omp(a, 0, n);
+    }
 
     clock_gettime(CLOCK_MONOTONIC, &t1);
     double secs = (t1.tv_sec - t0.tv_sec) + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
