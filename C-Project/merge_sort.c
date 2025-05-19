@@ -22,17 +22,18 @@ void merge(uint32_t *a, size_t left, size_t mid, size_t right) {
     free(R);
 }
 
-void parallel_merge_sort_omp(uint32_t *a, size_t n) {
-    if (n <= 1) return;
-    size_t mid = n / 2;
+void parallel_merge_sort_omp(uint32_t *a, size_t left, size_t right) {
+    if (right - left <= 1) return;
+    size_t mid = left + (right - left) / 2;
 
     #pragma omp task shared(a)
-    parallel_merge_sort_omp(a, mid);
+    parallel_merge_sort_omp(a, left, mid);
 
     #pragma omp task shared(a)
-    parallel_merge_sort_omp(a + mid, n - mid);
+    parallel_merge_sort_omp(a, mid, right);
 
     #pragma omp taskwait
-    merge(a, 0, mid, n);
+    merge(a, left, mid, right);
 }
+
 
