@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 1) Control libuv thread-pool size
+    // 1) Control libuv thread‑pool size
     char envbuf[32];
     snprintf(envbuf, sizeof(envbuf), "UV_THREADPOOL_SIZE=%d", maxThreads);
     putenv(strdup(envbuf));  // strdup so memory remains valid
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     uv_mutex_init(&mutex);
     int counter = 0;
 
-    // 4) Time the parallel merge-sort
+    // 4) Time the parallel merge‑sort
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
@@ -57,25 +57,10 @@ int main(int argc, char *argv[]) {
                 + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
     double mips = (arraySize / secs) / 1e6;
 
-    // 5) Print to console (CSV line)
+    // 5) Print to stdout (CSV line)
+    //    maxThreads,arraySize,seconds,MIps
     printf("%d,%d,%.6f,%.3f\n",
            maxThreads, arraySize, secs, mips);
-
-    // 6) Append to results.csv (with header if first run)
-    const char *out_path = "results.csv";
-    FILE *fout = fopen(out_path, "a+");
-    if (!fout) {
-        perror("fopen results.csv");
-        return 1;
-    }
-    // if empty, write header
-    fseek(fout, 0, SEEK_END);
-    if (ftell(fout) == 0) {
-        fprintf(fout, "maxThreads,arraySize,seconds,MIps\n");
-    }
-    fprintf(fout, "%d,%d,%.6f,%.3f\n",
-            maxThreads, arraySize, secs, mips);
-    fclose(fout);
 
     // cleanup
     uv_mutex_destroy(&mutex);
