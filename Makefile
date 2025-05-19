@@ -4,8 +4,8 @@ SHELL := /bin/bash
 # Compiler/tool definitions
 # -----------------------------------------------------------------------------
 CC       := gcc
-CFLAGS   := -O2 -Wall -pthread
-LDFLAGS  := -luv
+CFLAGS   := -O2 -Wall -pthread -fopenmp
+LDFLAGS  :=
 
 DOTNET   := dotnet
 CSPROJ   := CSharp-Project/MergeSortPerf/MergeSortPerf.csproj
@@ -61,7 +61,6 @@ prepare_dirs:
 build_c:
 	$(CC) $(CFLAGS) \
 	  C-Project/main.c \
-	  C-Project/merge_sort_uv.c \
 	  C-Project/merge_sort.c \
 	  -o $(BUILD_DIR)/parallel_merge_sort_c \
 	  $(LDFLAGS)
