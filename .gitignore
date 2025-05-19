@@ -502,3 +502,4 @@ CSharp-Project/.idea/
 # End of https://www.toptal.com/developers/gitignore/api/csharp,visualstudiocode,rust
 
 .DS_Store
+*.bin
