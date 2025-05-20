@@ -57,7 +57,8 @@ build_c:
 
 build_cs:
 	$(DOTNET) publish $(CSPROJ) -c Release --no-self-contained -o $(BUILD_DIR)
-	ln -f $(BUILD_DIR)/MergeSortPerf.dll $(BUILD_DIR)/parallel_merge_sort_cs.dll
+	ln -f $(BUILD_DIR)/MergeSortPerf.dll \
+	      $(BUILD_DIR)/parallel_merge_sort_cs.dll
 	cp $(BUILD_DIR)/MergeSortPerf.runtimeconfig.json \
 	   $(BUILD_DIR)/parallel_merge_sort_cs.runtimeconfig.json
 	cp $(BUILD_DIR)/MergeSortPerf.deps.json \
@@ -84,26 +85,29 @@ init_outputs:
 # -----------------------------------------------------------------------------
 run:
 	for lang in c cs rs; do \
-	  # pick binary and file-vars \
-	  if [ "$$lang" = "cs" ]; then \
+	  if   [ "$$lang" = "c"  ]; then \
+	    run_cmd="$(BUILD_DIR)/parallel_merge_sort_c"; \
+	    th_file="$(TH_C)";  pf_file="$(PF_C)"; \
+	  elif [ "$$lang" = "cs" ]; then \
 	    run_cmd="dotnet $(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
 	    th_file="$(TH_CS)"; pf_file="$(PF_CS)"; \
 	  else \
-	    run_cmd="$(BUILD_DIR)/parallel_merge_sort_$$lang"; \
-	    th_file="$(TH_$$lang)"; pf_file="$(PF_$$lang)"; \
+	    run_cmd="$(BUILD_DIR)/parallel_merge_sort_rs"; \
+	    th_file="$(TH_RS)"; pf_file="$(PF_RS)"; \
 	  fi; \
 	  if [ ! -f $$(echo $$run_cmd | awk '{print $$2}') ]; then \
-	    echo "[!] Skipping $$lang"; continue; \
+	    echo "[!] Skipping $$lang"; \
+	    continue; \
 	  fi; \
 	  echo ">>> Running $$lang <<<"; \
 	  for t in $(THREADS); do \
 	    for s in $(SIZES); do \
-	      echo "-- threads=$$t size=$$s --" >> $$pf_file; \
+	      echo "-- threads=$$t size=$$s --" >> "$$pf_file"; \
 	      for rep in $$(seq 1 $(REPEAT)); do \
-	        echo "[run $$rep]:" >> $$pf_file; \
+	        echo "[run $$rep]:" >> "$$pf_file"; \
 	        /usr/bin/perf stat -e $(EVENTS) $$run_cmd $$t $$s \
-	          2>>$$pf_file \
-	          | tee -a $$th_file; \
+	          2>>"$$pf_file" \
+	          | tee -a "$$th_file"; \
 	      done; \
 	    done; \
 	  done; \
