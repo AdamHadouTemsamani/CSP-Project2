@@ -118,14 +118,14 @@ run:
 	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file | tail -n $(REPEAT)); \
 	      if [ -n "$$raw" ]; then \
 	        secs=$$(echo "$$raw" | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
-	      else \
+	      else; \
 	        if [ "$$lang" = "cs" ]; then \
-	          secs=$$( dotnet $$bin $$t $$s | awk -F, '{print $$3}' ); \
-	        else \
-	          secs=$$( $$bin $$t $$s | awk -F, '{print $$3}' ); \
+	          secs=$$(dotnet $$bin $$t $$s | awk -F, '{print $$3}'); \
+	        else; \
+	          secs=$$( $$bin $$t $$s | awk -F, '{print $$3}'); \
 	        fi; \
 	      fi; \
-	      mips=$$(awk "BEGIN{printf \"%.3f\", ($$s/$$secs)/1e6}"); \
+	      mips=$$(awk -v s=$$s -v secs=$$secs 'BEGIN{printf "%.3f", (s/secs)/1e6}'); \
 	      echo "$$t,$$s,$$secs,$$mips" >> $$th_file; \
 	    done; \
 	  done; \
