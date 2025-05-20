@@ -57,12 +57,13 @@ build_c:
 	  -o $(BUILD_DIR)/parallel_merge_sort_c $(LDFLAGS)
 
 build_cs:
-	# Publish framework-dependent
+	# Publish as framework-dependent into build/
 	$(DOTNET) publish $(CSPROJ) \
 	    -c Release \
 	    --no-self-contained \
 	    -o $(BUILD_DIR)
-	ln -f $(BUILD_DIR)/MergeSortPerf.dll $(BUILD_DIR)/parallel_merge_sort_cs.dll
+	ln -f $(BUILD_DIR)/MergeSortPerf.dll \
+	      $(BUILD_DIR)/parallel_merge_sort_cs.dll
 	cp  $(BUILD_DIR)/MergeSortPerf.runtimeconfig.json \
 	    $(BUILD_DIR)/parallel_merge_sort_cs.runtimeconfig.json
 	cp  $(BUILD_DIR)/MergeSortPerf.deps.json           \
@@ -89,40 +90,37 @@ init_outputs:
 # -----------------------------------------------------------------------------
 run:
 	for lang in c cs rs; do \
-	  # pick the right binary/dll \
 	  if [ "$$lang" = "cs" ]; then \
-	    bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll" \
 	  else \
-	    bin="$(BUILD_DIR)/parallel_merge_sort_$$lang"; \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_$$lang" \
 	  fi; \
 	  if [ ! -f $$bin ]; then \
-	    echo "[!] Skipping $$lang"; \
-	    continue; \
+	    echo "[!] Skipping $$lang" \
+	    continue \
 	  fi; \
-	  echo ">>> Running $$lang <<<"; \
-	  th_file=$(RESULTS_DIR)/throughput_$$lang.csv; \
-	  pf_file=$(PERF_DIR)/perf_$$lang.txt; \
+	  echo ">>> Running $$lang <<<" \
+	  th_file="$(RESULTS_DIR)/throughput_$$lang.csv" \
+	  pf_file="$(PERF_DIR)/perf_$$lang.txt" \
 	  for t in $(THREADS); do \
 	    for s in $(SIZES); do \
 	      echo "-- threads=$$t size=$$s --" >> $$pf_file; \
 	      for rep in $$(seq 1 $(REPEAT)); do \
 	        echo "[run $$rep]:" >> $$pf_file; \
 	        if [ "$$lang" = "cs" ]; then \
-	          /usr/bin/perf stat -e $(EVENTS) dotnet $$bin $$t $$s \
-	            > /dev/null 2>> $$pf_file; \
+	          /usr/bin/perf stat -e $(EVENTS) dotnet $$bin $$t $$s > /dev/null 2>> $$pf_file; \
 	        else \
-	          /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s \
-	            > /dev/null 2>> $$pf_file; \
+	          /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s > /dev/null 2>> $$pf_file; \
 	        fi; \
 	      done; \
 	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file | tail -n $(REPEAT)); \
 	      if [ -n "$$raw" ]; then \
 	        secs=$$(echo "$$raw" | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
-	      else; \
+	      else \
 	        if [ "$$lang" = "cs" ]; then \
 	          secs=$$(dotnet $$bin $$t $$s | awk -F, '{print $$3}'); \
-	        else; \
-	          secs=$$( $$bin $$t $$s | awk -F, '{print $$3}'); \
+	        else \
+	          secs=$$($$bin $$t $$s | awk -F, '{print $$3}'); \
 	        fi; \
 	      fi; \
 	      mips=$$(awk -v s=$$s -v secs=$$secs 'BEGIN{printf "%.3f", (s/secs)/1e6}'); \
