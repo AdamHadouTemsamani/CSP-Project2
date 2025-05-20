@@ -90,32 +90,39 @@ init_outputs:
 # -----------------------------------------------------------------------------
 run:
 	for lang in c cs rs; do \
-	  if [ "$$lang" = "cs" ]; then bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; else bin="$(BUILD_DIR)/parallel_merge_sort_$$lang"; fi; \
-	  if [ ! -f $$bin ]; then echo "[!] Skipping $$lang"; continue; fi; \
-	  echo ">>> Running $$lang <<<" ; \
-	  th_file="$(RESULTS_DIR)/throughput_$$lang.csv"; pf_file="$(PERF_DIR)/perf_$$lang.txt"; \
+	  if [ "$$lang" = "cs" ]; then \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
+	  else \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_$$lang"; \
+	  fi; \
+	  if [ ! -f $$bin ]; then \
+	    echo "[!] Skipping $$lang"; \
+	    continue; \
+	  fi; \
+	  echo ">>> Running $$lang <<<"; \
+	  th_file="$(RESULTS_DIR)/throughput_$$lang.csv"; \
+	  pf_file="$(PERF_DIR)/perf_$$lang.txt"; \
 	  for t in $(THREADS); do \
 	    for s in $(SIZES); do \
 	      echo "-- threads=$$t size=$$s --" >> $$pf_file; \
 	      for rep in $$(seq 1 $(REPEAT)); do \
 	        echo "[run $$rep]:" >> $$pf_file; \
 	        if [ "$$lang" = "cs" ]; then \
-	          /usr/bin/perf stat -e $(EVENTS) dotnet $$bin $$t $$s > /dev/null 2>> $$pf_file; \
+	          /usr/bin/perf stat -e $(EVENTS) dotnet $$bin $$t $$s \
+	            > /dev/null 2>> $$pf_file; \
 	        else \
-	          /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s > /dev/null 2>> $$pf_file; \
+	          /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s \
+	            > /dev/null 2>> $$pf_file; \
 	        fi; \
 	      done; \
 	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file | tail -n $(REPEAT)); \
 	      if [ -n "$$raw" ]; then \
-	        secs=$$(echo "$$raw" | awk '{sum+=$1} END{printf "%.6f", sum/NR}'); \
+	        secs=$$(echo "$$raw" | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
 	      else \
-	        if [ "$$lang" = "cs" ]; then \
-	          secs=$$(dotnet $$bin $$t $$s | awk -F, '{print $$3}'); \
-	        else \
-	          secs=$$($$bin $$t $$s | awk -F, '{print $$3}'); \
-	        fi; \
+	        echo "[!] No perf data for $$lang threads=$$t size=$$s" >> $$pf_file; \
+	        secs=0; \
 	      fi; \
-	      mips=$$(echo "$$s $$secs" | awk '{printf "%.3f", ($$1/$$2)/1e6}'); \
+	      mips=$$(awk -v s=$$s -v secs=$$secs 'BEGIN{ if (secs>0) printf "%.3f", (s/secs)/1e6; else print "0"}'); \
 	      echo "$$t,$$s,$$secs,$$mips" >> $$th_file; \
 	    done; \
 	  done; \
