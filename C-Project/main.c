@@ -52,9 +52,8 @@ int main(int argc, char **argv) {
     double secs = (t1.tv_sec - t0.tv_sec)
                 + (t1.tv_nsec - t0.tv_nsec) * 1e-9;
     double mips = (n / secs) / 1e6;
-    printf("%d,%zu,%.6f,%.3f\n",
-           max_threads, n, secs, mips);
-
+    printf("steady,%d,%.0f,%.6f,%.3f\n",
+            max_threads, (double)n, secs, mips);
     parallel_merge_sort_fini();
     free(a);
     return EXIT_SUCCESS;
