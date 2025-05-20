@@ -27,10 +27,10 @@ void parallel_merge_sort_omp(uint32_t *a, size_t left, size_t right) {
 
     size_t mid = left + (right - left) / 2;
 
-    #pragma omp task shared(a) if (right - left > MERGE_SORT_OMP_THRESHOLD)
+    #pragma omp task shared(a)
     parallel_merge_sort_omp(a, left, mid);
 
-    #pragma omp task shared(a) if (right - left > MERGE_SORT_OMP_THRESHOLD)
+    #pragma omp task shared(a)
     parallel_merge_sort_omp(a, mid, right);
 
     #pragma omp taskwait
