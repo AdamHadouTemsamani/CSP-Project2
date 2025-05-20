@@ -90,18 +90,10 @@ init_outputs:
 # -----------------------------------------------------------------------------
 run:
 	for lang in c cs rs; do \
-	  if [ "$$lang" = "cs" ]; then \
-	    bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll" \
-	  else \
-	    bin="$(BUILD_DIR)/parallel_merge_sort_$$lang" \
-	  fi; \
-	  if [ ! -f $$bin ]; then \
-	    echo "[!] Skipping $$lang" \
-	    continue \
-	  fi; \
-	  echo ">>> Running $$lang <<<" \
-	  th_file="$(RESULTS_DIR)/throughput_$$lang.csv" \
-	  pf_file="$(PERF_DIR)/perf_$$lang.txt" \
+	  if [ "$$lang" = "cs" ]; then bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; else bin="$(BUILD_DIR)/parallel_merge_sort_$$lang"; fi; \
+	  if [ ! -f $$bin ]; then echo "[!] Skipping $$lang"; continue; fi; \
+	  echo ">>> Running $$lang <<<"; \
+	  th_file="$(RESULTS_DIR)/throughput_$$lang.csv"; pf_file="$(PERF_DIR)/perf_$$lang.txt"; \
 	  for t in $(THREADS); do \
 	    for s in $(SIZES); do \
 	      echo "-- threads=$$t size=$$s --" >> $$pf_file; \
