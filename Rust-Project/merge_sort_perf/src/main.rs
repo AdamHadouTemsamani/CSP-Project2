@@ -12,22 +12,13 @@ use merge_sort::parallel_merge_sort;
 
 fn main() {
     let (max_threads, array_size) = parse_input();
-<<<<<<< HEAD
-    let mut numbers = read_integers();
-=======
     let mut integers = read_integers();
->>>>>>> origin/main
     let pool = ThreadPoolBuilder::new()
         .num_threads(max_threads)
         .build()
         .unwrap();
     let start = Instant::now();
     pool.install(|| {
-<<<<<<< HEAD
-        parallel_merge_sort(&mut numbers);
-    });
-    let duration = start.elapsed();
-=======
         parallel_merge_sort(&mut integers);
     });
     let duration = start.elapsed();
@@ -41,7 +32,6 @@ fn main() {
             process::exit(1);
         }
     }
->>>>>>> origin/main
     let secs = duration.as_secs_f64();
     let mips = (array_size as f64) / secs / 1_000_000.0;
     println!("{},{},{:.6},{:.3}", max_threads, array_size, secs, mips);
