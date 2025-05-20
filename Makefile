@@ -61,13 +61,12 @@ build_c:
 	  -o $(BUILD_DIR)/parallel_merge_sort_c $(LDFLAGS)
 
 build_cs:
-	# Publish C# as a self‑contained DLL into build/
+	# Publish C# as a DLL into build/
 	$(DOTNET) publish $(CSPROJ) \
 	    -c Release \
 	    -r linux-x64 \
 	    --self-contained false \
 	    -o $(BUILD_DIR)
-
 	# Rename for clarity
 	mv $(BUILD_DIR)/MergeSortPerf.dll \
 	   $(BUILD_DIR)/parallel_merge_sort_cs.dll
@@ -93,7 +92,7 @@ init_outputs:
 # -----------------------------------------------------------------------------
 run:
 	for lang in c cs rs; do \
-	  # pick the right binary/dll
+	  # pick the right binary/dll \
 	  if [ "$$lang" = "cs" ]; then \
 	    bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
 	  else \
