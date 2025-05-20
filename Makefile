@@ -113,4 +113,6 @@ run:
 	      echo "$$t,$$s,$$secs,$$mips" >> $$th_file; \
 	    done; \
 	  done; \
+	  echo ">>> Finished $$lang <<<"; \
 	done
+
