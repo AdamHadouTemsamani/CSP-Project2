@@ -41,9 +41,9 @@ EVENTS  := cpu-cycles,cache-misses,dTLB-load-misses,context-switches
 all: prepare_dirs build_c build_cs build_rs init_outputs run
 
 clean:
-	rm -rf $(BUILD_DIR) $(RESULTS_DIR) $(PERF_DIR) \
-	&& -$(DOTNET) clean $(CSPROJ) \
-	&& cd $(CARGO_TGT) && $(CARGO) clean
+	@rm -rf $(BUILD_DIR) $(RESULTS_DIR) $(PERF_DIR)
+	-@$(DOTNET) clean $(CSPROJ)
+	@cd $(CARGO_TGT) && $(CARGO) clean
 
 prepare_dirs:
 	mkdir -p $(BUILD_DIR) $(RESULTS_DIR) $(PERF_DIR)
@@ -57,19 +57,21 @@ build_c:
 	  -o $(BUILD_DIR)/parallel_merge_sort_c $(LDFLAGS)
 
 build_cs:
-	# Publish as framework-dependent into build/
+	# Publish framework-dependent
 	$(DOTNET) publish $(CSPROJ) \
 	    -c Release \
 	    --no-self-contained \
-	    -o $(BUILD_DIR) \
-	# Symlink and copy configs for `dotnet parallel_merge_sort_cs.dll` \
-	&& ln -f $(BUILD_DIR)/MergeSortPerf.dll $(BUILD_DIR)/parallel_merge_sort_cs.dll \
-	&& cp $(BUILD_DIR)/MergeSortPerf.runtimeconfig.json $(BUILD_DIR)/parallel_merge_sort_cs.runtimeconfig.json \
-	&& cp $(BUILD_DIR)/MergeSortPerf.deps.json           $(BUILD_DIR)/parallel_merge_sort_cs.deps.json
+	    -o $(BUILD_DIR)
+	ln -f $(BUILD_DIR)/MergeSortPerf.dll $(BUILD_DIR)/parallel_merge_sort_cs.dll
+	cp  $(BUILD_DIR)/MergeSortPerf.runtimeconfig.json \
+	    $(BUILD_DIR)/parallel_merge_sort_cs.runtimeconfig.json
+	cp  $(BUILD_DIR)/MergeSortPerf.deps.json           \
+	    $(BUILD_DIR)/parallel_merge_sort_cs.deps.json
 
 build_rs:
 	cd $(CARGO_TGT) && $(CARGO) build --release \
-	  && ln -f target/release/merge_sort_perf $(abspath $(BUILD_DIR)/parallel_merge_sort_rs)
+	  && ln -f target/release/merge_sort_perf \
+	         $(abspath $(BUILD_DIR)/parallel_merge_sort_rs)
 
 # -----------------------------------------------------------------------------
 # Initialize CSV/perf outputs
@@ -106,9 +108,11 @@ run:
 	      for rep in $$(seq 1 $(REPEAT)); do \
 	        echo "[run $$rep]:" >> $$pf_file; \
 	        if [ "$$lang" = "cs" ]; then \
-	          /usr/bin/perf stat -e $(EVENTS) dotnet $$bin $$t $$s > /dev/null 2>> $$pf_file; \
+	          /usr/bin/perf stat -e $(EVENTS) dotnet $$bin $$t $$s \
+	            > /dev/null 2>> $$pf_file; \
 	        else \
-	          /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s > /dev/null 2>> $$pf_file; \
+	          /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s \
+	            > /dev/null 2>> $$pf_file; \
 	        fi; \
 	      done; \
 	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file | tail -n $(REPEAT)); \
