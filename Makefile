@@ -16,17 +16,17 @@ CARGO_TGT:= Rust-Project/merge_sort_perf
 # -----------------------------------------------------------------------------
 # Directories & output files
 # -----------------------------------------------------------------------------
-BUILD_DIR    := build
-RESULTS_DIR  := results
-PERF_DIR     := perf
+BUILD_DIR   := build
+RESULTS_DIR := results
+PERF_DIR    := perf
 
-TH_C         := $(RESULTS_DIR)/throughput_c.csv
-TH_CS        := $(RESULTS_DIR)/throughput_cs.csv
-TH_RS        := $(RESULTS_DIR)/throughput_rs.csv
+TH_C  := $(RESULTS_DIR)/throughput_c.csv
+TH_CS := $(RESULTS_DIR)/throughput_cs.csv
+TH_RS := $(RESULTS_DIR)/throughput_rs.csv
 
-PF_C         := $(PERF_DIR)/perf_c.txt
-PF_CS        := $(PERF_DIR)/perf_cs.txt
-PF_RS        := $(PERF_DIR)/perf_rs.txt
+PF_C  := $(PERF_DIR)/perf_c.txt
+PF_CS := $(PERF_DIR)/perf_cs.txt
+PF_RS := $(PERF_DIR)/perf_rs.txt
 
 # -----------------------------------------------------------------------------
 # Experiment parameters
@@ -52,22 +52,16 @@ prepare_dirs:
 # Build rules
 # -----------------------------------------------------------------------------
 build_c:
-	$(CC) $(CFLAGS) \
-	  C-Project/main.c C-Project/merge_sort.c \
+	$(CC) $(CFLAGS) C-Project/main.c C-Project/merge_sort.c \
 	  -o $(BUILD_DIR)/parallel_merge_sort_c $(LDFLAGS)
 
 build_cs:
-	# Publish as framework-dependent into build/
-	$(DOTNET) publish $(CSPROJ) \
-	    -c Release \
-	    --no-self-contained \
-	    -o $(BUILD_DIR)
-	ln -f $(BUILD_DIR)/MergeSortPerf.dll \
-	      $(BUILD_DIR)/parallel_merge_sort_cs.dll
-	cp  $(BUILD_DIR)/MergeSortPerf.runtimeconfig.json \
-	    $(BUILD_DIR)/parallel_merge_sort_cs.runtimeconfig.json
-	cp  $(BUILD_DIR)/MergeSortPerf.deps.json           \
-	    $(BUILD_DIR)/parallel_merge_sort_cs.deps.json
+	$(DOTNET) publish $(CSPROJ) -c Release --no-self-contained -o $(BUILD_DIR)
+	ln -f $(BUILD_DIR)/MergeSortPerf.dll $(BUILD_DIR)/parallel_merge_sort_cs.dll
+	cp $(BUILD_DIR)/MergeSortPerf.runtimeconfig.json \
+	   $(BUILD_DIR)/parallel_merge_sort_cs.runtimeconfig.json
+	cp $(BUILD_DIR)/MergeSortPerf.deps.json \
+	   $(BUILD_DIR)/parallel_merge_sort_cs.deps.json
 
 build_rs:
 	cd $(CARGO_TGT) && $(CARGO) build --release \
@@ -75,55 +69,42 @@ build_rs:
 	         $(abspath $(BUILD_DIR)/parallel_merge_sort_rs)
 
 # -----------------------------------------------------------------------------
-# Initialize CSV/perf outputs
+# Initialize CSV & perf logs
 # -----------------------------------------------------------------------------
 init_outputs:
-	@echo "maxThreads,arraySize,seconds,MIps" > $(TH_C)
-	@echo "maxThreads,arraySize,seconds,MIps" > $(TH_CS)
-	@echo "maxThreads,arraySize,seconds,MIps" > $(TH_RS)
+	@echo "phase,threads,size,seconds,mips" > $(TH_C)
+	@echo "phase,threads,size,seconds,mips" > $(TH_CS)
+	@echo "phase,threads,size,seconds,mips" > $(TH_RS)
 	@echo "# perf log for C"    > $(PF_C)
 	@echo "# perf log for C#"   > $(PF_CS)
 	@echo "# perf log for Rust" > $(PF_RS)
 
 # -----------------------------------------------------------------------------
-# Run experiments
+# Run experiments (stdout preserved)
 # -----------------------------------------------------------------------------
 run:
 	for lang in c cs rs; do \
+	  # pick binary and file-vars \
 	  if [ "$$lang" = "cs" ]; then \
-	    bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
+	    run_cmd="dotnet $(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
+	    th_file="$(TH_CS)"; pf_file="$(PF_CS)"; \
 	  else \
-	    bin="$(BUILD_DIR)/parallel_merge_sort_$$lang"; \
+	    run_cmd="$(BUILD_DIR)/parallel_merge_sort_$$lang"; \
+	    th_file="$(TH_$$lang)"; pf_file="$(PF_$$lang)"; \
 	  fi; \
-	  if [ ! -f $$bin ]; then \
-	    echo "[!] Skipping $$lang"; \
-	    continue; \
+	  if [ ! -f $$(echo $$run_cmd | awk '{print $$2}') ]; then \
+	    echo "[!] Skipping $$lang"; continue; \
 	  fi; \
 	  echo ">>> Running $$lang <<<"; \
-	  th_file="$(RESULTS_DIR)/throughput_$$lang.csv"; \
-	  pf_file="$(PERF_DIR)/perf_$$lang.txt"; \
 	  for t in $(THREADS); do \
 	    for s in $(SIZES); do \
 	      echo "-- threads=$$t size=$$s --" >> $$pf_file; \
 	      for rep in $$(seq 1 $(REPEAT)); do \
 	        echo "[run $$rep]:" >> $$pf_file; \
-	        if [ "$$lang" = "cs" ]; then \
-	          /usr/bin/perf stat -e $(EVENTS) dotnet $$bin $$t $$s \
-	            > /dev/null 2>> $$pf_file; \
-	        else \
-	          /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s \
-	            > /dev/null 2>> $$pf_file; \
-	        fi; \
+	        /usr/bin/perf stat -e $(EVENTS) $$run_cmd $$t $$s \
+	          2>>$$pf_file \
+	          | tee -a $$th_file; \
 	      done; \
-	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file | tail -n $(REPEAT)); \
-	      if [ -n "$$raw" ]; then \
-	        secs=$$(echo "$$raw" | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
-	      else \
-	        echo "[!] No perf data for $$lang threads=$$t size=$$s" >> $$pf_file; \
-	        secs=0; \
-	      fi; \
-	      mips=$$(awk -v s=$$s -v secs=$$secs 'BEGIN{ if (secs>0) printf "%.3f", (s/secs)/1e6; else print "0"}'); \
-	      echo "$$t,$$s,$$secs,$$mips" >> $$th_file; \
 	    done; \
 	  done; \
 	done
