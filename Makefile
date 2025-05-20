@@ -61,14 +61,21 @@ build_c:
 	  -o $(BUILD_DIR)/parallel_merge_sort_c $(LDFLAGS)
 
 build_cs:
-	$(DOTNET) build $(CSPROJ) -c Release \
-	      -o ../$(BUILD_DIR)/parallel_merge_sort_cs
+	# Publish C# as a self‑contained DLL into build/
+	$(DOTNET) publish $(CSPROJ) \
+	    -c Release \
+	    -r linux-x64 \
+	    --self-contained false \
+	    -o $(BUILD_DIR)
+
+	# Rename for clarity
+	mv $(BUILD_DIR)/MergeSortPerf.dll \
+	   $(BUILD_DIR)/parallel_merge_sort_cs.dll
 
 build_rs:
 	cd $(CARGO_TGT) && $(CARGO) build --release \
 	  && ln -f target/release/merge_sort_perf \
 	         $(abspath $(BUILD_DIR)/parallel_merge_sort_rs)
-
 
 # -----------------------------------------------------------------------------
 # Initialize CSV/perf outputs
@@ -85,9 +92,14 @@ init_outputs:
 # Run experiments
 # -----------------------------------------------------------------------------
 run:
-	@for lang in c cs rs; do \
-	  bin=$(BUILD_DIR)/parallel_merge_sort_$$lang; \
-	  if [ ! -x $$bin ]; then \
+	for lang in c cs rs; do \
+	  # pick the right binary/dll
+	  if [ "$$lang" = "cs" ]; then \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
+	  else \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_$$lang"; \
+	  fi; \
+	  if [ ! -f $$bin ]; then \
 	    echo "[!] Skipping $$lang"; continue; \
 	  fi; \
 	  th_file=$(RESULTS_DIR)/throughput_$$lang.csv; \
@@ -98,15 +110,21 @@ run:
 	      echo "-- threads=$$t size=$$s --" >> $$pf_file; \
 	      for rep in $$(seq 1 $(REPEAT)); do \
 	        echo "[run $$rep]:" >> $$pf_file; \
-	        { /usr/bin/perf stat -e $(EVENTS) \
-	            $$bin $$t $$s > /dev/null; } 2>> $$pf_file; \
+	        if [ "$$lang" = "cs" ]; then \
+	          { /usr/bin/perf stat -e $(EVENTS) dotnet $$bin $$t $$s > /dev/null; } 2>> $$pf_file; \
+	        else \
+	          { /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s > /dev/null; } 2>> $$pf_file; \
+	        fi; \
 	      done; \
-	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file \
-	              | tail -n $(REPEAT)); \
+	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file | tail -n $(REPEAT)); \
 	      if [ -n "$$raw" ]; then \
 	        secs=$$(echo "$$raw" | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
 	      else \
-	        secs=$$( $$bin $$t $$s | awk -F, '{print $$3}' ); \
+	        if [ "$$lang" = "cs" ]; then \
+	          secs=$$( dotnet $$bin $$t $$s | awk -F, '{print $$3}' ); \
+	        else \
+	          secs=$$( $$bin $$t $$s | awk -F, '{print $$3}' ); \
+	        fi; \
 	      fi; \
 	      mips=$$(awk "BEGIN{printf \"%.3f\", ($$s/$$secs)/1e6}"); \
 	      echo "$$t,$$s,$$secs,$$mips" >> $$th_file; \
