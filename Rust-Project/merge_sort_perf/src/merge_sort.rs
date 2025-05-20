@@ -26,6 +26,7 @@ fn merge(lst: &mut [u32], mid: usize) {
             k += 1;
         }
     }
+<<<<<<< HEAD
     while i < left.len() {
         lst[k] = left[i];
         i += 1;
@@ -36,4 +37,9 @@ fn merge(lst: &mut [u32], mid: usize) {
         j += 1;
         k += 1;
     }
+=======
+    lst[k..k + (left.len() - i)].copy_from_slice(&left[i..]);
+    k += left.len() - i;
+    lst[k..k + (right.len() - j)].copy_from_slice(&right[j..]);
+>>>>>>> origin/main
 }

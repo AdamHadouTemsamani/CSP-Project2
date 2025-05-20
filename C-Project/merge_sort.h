@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+<<<<<<< HEAD
 /* 
    Allocate/free a single global scratch buffer of size n.
    Must be called before/after any calls to parallel_merge_sort_omp().
@@ -19,5 +20,16 @@ void parallel_merge_sort_fini(void);
        parallel_merge_sort_omp(a, 0, n);
 */
 void parallel_merge_sort_omp(uint32_t *a, size_t left, size_t right);
+=======
+void merge(uint32_t arr[], size_t left, size_t mid, size_t right);
+void merge_sort(uint32_t arr[], size_t left, size_t right);
+
+// libuv-based parallel merge-sort:
+void merge_sort_uv(uint32_t *arr,
+                   size_t left,
+                   size_t right,
+                   uv_loop_t *loop,
+                   uv_mutex_t *mutex);
+>>>>>>> origin/main
 
 #endif // MERGE_SORT_H

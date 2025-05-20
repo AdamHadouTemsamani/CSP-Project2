@@ -1,63 +1,74 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading;
+﻿using System.Diagnostics;
 
-namespace ParallelMergeSort
+namespace MergeSortPerf;
+
+public static class Program
 {
-    class Program
+    private const string RandomIntegersFileName = "random_integers.bin";
+
+    public static void Main(string[] args)
     {
-        static void Main(string[] args)
+        if (args.Length < 2)
         {
-            if (args.Length < 2)
-            {
-                Console.Error.WriteLine("Usage: ParallelMergeSort <maxThreads> <arraySize>");
-                return;
-            }
-
-            if (!int.TryParse(args[0], out int maxThreads) || maxThreads < 1 ||
-                !int.TryParse(args[1], out int arraySize) || arraySize < 1)
-            {
-                Console.Error.WriteLine("Invalid maxThreads or arraySize");
-                return;
-            }
-
-            ThreadPool.SetMinThreads(maxThreads, maxThreads);
-            ThreadPool.SetMaxThreads(maxThreads, maxThreads);
-
-            var path = Path.Combine("..", "insert_filename.txt");
-            if (!File.Exists(path))
-            {
-                Console.WriteLine("File not found");
-                return;
-            }
-
-            var lines = File.ReadLines(path).Take(arraySize).ToList();
-            if (lines.Count < arraySize)
-            {
-                Console.WriteLine("Size mismatch");
-                return;
-            }
-
-            var data = lines
-                .Select(line => int.Parse(line.Trim()))
-                .ToArray();
-            
-            //Run and timing
-            var sw = Stopwatch.StartNew(); //start
-            MergeSorter.SortAsync(data).GetAwaiter().GetResult();
-            sw.Stop(); //end
-            
-            //Converting to million items sorted per second (MI/s)
-            double secs = sw.Elapsed.TotalSeconds;
-            double mips = (data.Length / secs) / 1_000_000.0;
-            
-            //Print to output
-            Console.WriteLine(
-                $"{maxThreads},{arraySize},{secs:F6},{mips:F3}");
-            
+            Console.Error.WriteLine("Usage: ParallelMergeSort <maxThreads> <arraySize>");
+            return;
         }
 
+        if (
+            !int.TryParse(args[0], out int maxThreads)
+            || maxThreads < 1
+            || !int.TryParse(args[1], out int arraySize)
+            || arraySize < 1
+        )
+        {
+            Console.Error.WriteLine("Invalid maxThreads or arraySize");
+            return;
+        }
+
+        ThreadPool.SetMinThreads(maxThreads, maxThreads);
+        ThreadPool.SetMaxThreads(maxThreads, maxThreads);
+        var randomIntegersPath = Path.Combine("..", "..", RandomIntegersFileName);
+
+        if (!File.Exists(randomIntegersPath))
+        {
+            Console.WriteLine($"Expected to find file {RandomIntegersFileName}");
+            return;
+        }
+
+        var integerBytes = File.ReadAllBytes(randomIntegersPath);
+
+        if (integerBytes.Length < arraySize * 4)
+        {
+            Console.WriteLine("Size mismatch");
+            return;
+        }
+
+        var integers = new uint[arraySize];
+
+        for (var i = 0; i < arraySize; i++)
+        {
+            integers[i] = BitConverter.ToUInt32(integerBytes, i * 4);
+        }
+
+        var sw = Stopwatch.StartNew();
+        MergeSorter.SortAsync(integers).GetAwaiter().GetResult();
+        sw.Stop();
+
+        uint last = 0;
+
+        for (var i = 0; i < arraySize; i++)
+        {
+            if (integers[i] < last)
+            {
+                Console.WriteLine("Array not sorted at index {0}: {1} < {2}", i, integers[i], last);
+                return;
+            }
+        }
+
+        // Converting to million items sorted per second (MI/s)
+        double secs = sw.Elapsed.TotalSeconds;
+        double mips = arraySize / secs / 1_000_000.0;
+
+        Console.WriteLine($"{maxThreads},{arraySize},{secs:F6},{mips:F3}");
     }
 }
