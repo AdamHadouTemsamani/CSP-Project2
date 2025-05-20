@@ -20,6 +20,7 @@ BUILD_DIR   := build
 RESULTS_DIR := results
 PERF_DIR    := perf
 
+<<<<<<< Updated upstream
 TH_C  := $(RESULTS_DIR)/throughput_c.csv
 TH_CS := $(RESULTS_DIR)/throughput_cs.csv
 TH_RS := $(RESULTS_DIR)/throughput_rs.csv
@@ -27,6 +28,15 @@ TH_RS := $(RESULTS_DIR)/throughput_rs.csv
 PF_C  := $(PERF_DIR)/perf_c.txt
 PF_CS := $(PERF_DIR)/perf_cs.txt
 PF_RS := $(PERF_DIR)/perf_rs.txt
+=======
+TH_C         := $(RESULTS_DIR)/throughput_c.csv
+TH_CS        := $(RESULTS_DIR)/throughput_cs.csv
+TH_RS        := $(RESULTS_DIR)/throughput_rs.csv
+
+PF_C         := $(PERF_DIR)/perf_c.txt
+PF_CS        := $(PERF_DIR)/perf_cs.txt
+PF_RS        := $(PERF_DIR)/perf_rs.txt
+>>>>>>> Stashed changes
 
 # -----------------------------------------------------------------------------
 # Experiment parameters
@@ -36,6 +46,14 @@ SIZES   := 10 100 1000 10000 100000 1000000
 REPEAT  := 3
 EVENTS  := cpu-cycles,cache-misses,dTLB-load-misses,context-switches
 
+<<<<<<< Updated upstream
+=======
+EVENTS  := cpu-cycles,cache-misses,dTLB-load-misses,context-switches
+
+# -----------------------------------------------------------------------------
+# Phony targets
+# -----------------------------------------------------------------------------
+>>>>>>> Stashed changes
 .PHONY: all clean prepare_dirs build_c build_cs build_rs init_outputs run
 
 all: prepare_dirs build_c build_cs build_rs init_outputs run
@@ -109,6 +127,18 @@ run:
 	          2>>"$$pf_file" \
 	          | tee -a "$$th_file"; \
 	      done; \
+<<<<<<< Updated upstream
+=======
+	      secs=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file \
+	              | tail -n $(REPEAT) \
+	              | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
+	      if [ -z "$$secs" ]; then \
+	        secs=$$( $$bin $$t $$s | awk -F, '{print $$3}' ); \
+	      fi; \
+	      mips=$$(awk "BEGIN{printf \"%.3f\", ($$s/$$secs)/1e6}"); \
+	      echo "$$t,$$s,$$secs,$$mips" >> $$th_file; \
+>>>>>>> Stashed changes
 	    done; \
 	  done; \
+	  echo ">>> Finished $$lang <<<"; \
 	done
