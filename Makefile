@@ -65,8 +65,10 @@ build_cs:
 	      -o ../$(BUILD_DIR)/parallel_merge_sort_cs
 
 build_rs:
-	cd $(CARGO_TGT) && $(CARGO) build --release
-	ln -f target/release/merge_sort_perf ../../../$(BUILD_DIR)/parallel_merge_sort_rs
+	cd $(CARGO_TGT) && $(CARGO) build --release \
+	  && ln -f target/release/merge_sort_perf \
+	         $(abspath $(BUILD_DIR)/parallel_merge_sort_rs)
+
 
 # -----------------------------------------------------------------------------
 # Initialize CSV/perf outputs
