@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 # -----------------------------------------------------------------------------
-# Compiler/tool definitions
+# Tools
 # -----------------------------------------------------------------------------
 CC       := gcc
 CFLAGS   := -Wall -Wextra -O3 -g -fopenmp
@@ -14,19 +14,20 @@ CARGO    := cargo
 CARGO_TGT:= Rust-Project/merge_sort_perf
 
 # -----------------------------------------------------------------------------
-# Directories & output files
+# Directories
 # -----------------------------------------------------------------------------
 BUILD_DIR    := build
 RESULTS_DIR  := results
 PERF_DIR     := perf
 
-TH_C         := $(RESULTS_DIR)/throughput_c.csv
-TH_CS        := $(RESULTS_DIR)/throughput_cs.csv
-TH_RS        := $(RESULTS_DIR)/throughput_rs.csv
+# CSV + perf log paths
+TH_C   := $(RESULTS_DIR)/throughput_c.csv
+TH_CS  := $(RESULTS_DIR)/throughput_cs.csv
+TH_RS  := $(RESULTS_DIR)/throughput_rs.csv
 
-PF_C         := $(PERF_DIR)/perf_c.txt
-PF_CS        := $(PERF_DIR)/perf_cs.txt
-PF_RS        := $(PERF_DIR)/perf_rs.txt
+PF_C   := $(PERF_DIR)/perf_c.txt
+PF_CS  := $(PERF_DIR)/perf_cs.txt
+PF_RS  := $(PERF_DIR)/perf_rs.txt
 
 # -----------------------------------------------------------------------------
 # Experiment parameters
@@ -34,12 +35,8 @@ PF_RS        := $(PERF_DIR)/perf_rs.txt
 THREADS := 1 2 4 8 16
 SIZES   := 10 100 1000 10000 100000 1000000
 REPEAT  := 3
-
 EVENTS  := cpu-cycles,cache-misses,dTLB-load-misses,context-switches
 
-# -----------------------------------------------------------------------------
-# Phony targets
-# -----------------------------------------------------------------------------
 .PHONY: all clean prepare_dirs build_c build_cs build_rs init_outputs run
 
 all: prepare_dirs build_c build_cs build_rs init_outputs run
@@ -61,15 +58,25 @@ build_c:
 	  -o $(BUILD_DIR)/parallel_merge_sort_c $(LDFLAGS)
 
 build_cs:
-	# Publish C# as a DLL into build/
+	# Publish as framework-dependent, which emits:
+	#   MergeSortPerf.dll
+	#   MergeSortPerf.runtimeconfig.json
+	#   MergeSortPerf.deps.json
 	$(DOTNET) publish $(CSPROJ) \
 	    -c Release \
-	    -r linux-x64 \
-	    --self-contained false \
+	    --no-self-contained \
 	    -o $(BUILD_DIR)
-	# Rename for clarity
-	mv $(BUILD_DIR)/MergeSortPerf.dll \
-	   $(BUILD_DIR)/parallel_merge_sort_cs.dll
+
+	# For clarity, symlink/rename the DLL to our naming convention:
+	ln -f $(BUILD_DIR)/MergeSortPerf.dll \
+	      $(BUILD_DIR)/parallel_merge_sort_cs.dll
+
+	# Also copy the runtimeconfig so dotnet can find the right framework.
+	cp $(BUILD_DIR)/MergeSortPerf.runtimeconfig.json \
+	   $(BUILD_DIR)/parallel_merge_sort_cs.runtimeconfig.json
+
+	cp $(BUILD_DIR)/MergeSortPerf.deps.json \
+	   $(BUILD_DIR)/parallel_merge_sort_cs.deps.json
 
 build_rs:
 	cd $(CARGO_TGT) && $(CARGO) build --release \
@@ -77,7 +84,7 @@ build_rs:
 	         $(abspath $(BUILD_DIR)/parallel_merge_sort_rs)
 
 # -----------------------------------------------------------------------------
-# Initialize CSV/perf outputs
+# Initialize CSV and perf-log files
 # -----------------------------------------------------------------------------
 init_outputs:
 	@echo "maxThreads,arraySize,seconds,MIps" > $(TH_C)
@@ -92,7 +99,7 @@ init_outputs:
 # -----------------------------------------------------------------------------
 run:
 	for lang in c cs rs; do \
-	  # pick the right binary/dll \
+	  # pick the right binary (or DLL+config)
 	  if [ "$$lang" = "cs" ]; then \
 	    bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
 	  else \
