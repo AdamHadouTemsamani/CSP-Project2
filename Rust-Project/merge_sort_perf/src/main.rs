@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 use std::process;
 use std::time::Instant;
 use std::{env, path::PathBuf};
@@ -13,6 +13,7 @@ use merge_sort::parallel_merge_sort;
 fn main() {
     let (max_threads, array_size) = parse_input();
 
+    // Read exactly `array_size` integers from the binary file
     let mut integers = read_integers(array_size);
 
     let pool = ThreadPoolBuilder::new()
@@ -28,10 +29,10 @@ fn main() {
 
     // validate
     for i in 1..integers.len() {
-        if integers[i] < integers[i-1] {
+        if integers[i] < integers[i - 1] {
             eprintln!(
                 "Array is not sorted at index {}: {} < {}",
-                i, integers[i], integers[i-1]
+                i, integers[i], integers[i - 1]
             );
             process::exit(1);
         }
@@ -39,7 +40,8 @@ fn main() {
 
     let secs = duration.as_secs_f64();
     let mips = (array_size as f64) / secs / 1_000_000.0;
-    println!("steady,{},{:.6},{:.3}", max_threads, array_size, secs, mips);
+    // now we have four values: threads, size, secs, mips
+    println!("steady,{},{:.0},{:.6},{:.3}", max_threads, array_size, secs, mips);
 }
 
 fn read_integers(n: usize) -> Vec<u32> {
@@ -76,7 +78,7 @@ fn parse_input() -> (usize, usize) {
         process::exit(1);
     });
     if max_threads < 1 || array_size < 1 {
-        eprintln!("Invalid arguments: both must be ≥ 1");
+        eprintln!("Invalid arguments: both must be ≥ 1");
         process::exit(1);
     }
     (max_threads, array_size)
