@@ -28,7 +28,8 @@ namespace MergeSortPerf
             ThreadPool.SetMinThreads(maxThreads, maxThreads);
             ThreadPool.SetMaxThreads(maxThreads, maxThreads);
 
-            var path = Path.Combine("..", "..", RandomIntegersFileName);
+            // Look for the file in the working directory
+            var path = RandomIntegersFileName;
             if (!File.Exists(path))
             {
                 Console.Error.WriteLine($"Expected {RandomIntegersFileName}");
@@ -42,27 +43,22 @@ namespace MergeSortPerf
                 return;
             }
 
-            // Build input array (we'll copy it per‐run)
             var master = new uint[arraySize];
             for (int i = 0; i < arraySize; i++)
                 master[i] = BitConverter.ToUInt32(raw, i * 4);
 
-            // 1) Cold run: time the first SortAsync on a fresh copy
             var arrCold = (uint[])master.Clone();
             var swCold = Stopwatch.StartNew();
             MergeSorter.SortAsync(arrCold).GetAwaiter().GetResult();
             swCold.Stop();
 
-            // 2) Steady run: time a second SortAsync on another fresh copy
             var arrSteady = (uint[])master.Clone();
             var swSteady = Stopwatch.StartNew();
             MergeSorter.SortAsync(arrSteady).GetAwaiter().GetResult();
             swSteady.Stop();
 
-            // Validate using your exact method
             ValidateSorted(arrSteady);
 
-            // Print both results
             Print("cold",   maxThreads, arraySize, swCold.Elapsed.TotalSeconds);
             Print("steady", maxThreads, arraySize, swSteady.Elapsed.TotalSeconds);
         }
@@ -70,7 +66,6 @@ namespace MergeSortPerf
         static void Print(string phase, int threads, int size, double secs)
         {
             double mips = size / secs / 1_000_000.0;
-            // e.g. "cold,4,10000000,1.234567,8.100"
             Console.WriteLine($"{phase},{threads},{size},{secs:F6},{mips:F3}");
         }
 

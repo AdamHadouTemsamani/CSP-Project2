@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
     }
 
     /* Read binary file of little‑endian uint32_t */
-    const char *path = "../random_integers.bin";
+    const char *path = "random_integers.bin";
     FILE *f = fopen(path, "rb");
     if (!f) {
         perror("fopen");

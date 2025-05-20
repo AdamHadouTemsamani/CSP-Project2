@@ -57,18 +57,16 @@ prepare_dirs:
 # -----------------------------------------------------------------------------
 build_c:
 	$(CC) $(CFLAGS) \
-	  C-Project/main.c \
-	  C-Project/merge_sort.c \
-	  -o $(BUILD_DIR)/parallel_merge_sort_c \
-	  $(LDFLAGS)
+	  C-Project/main.c C-Project/merge_sort.c \
+	  -o $(BUILD_DIR)/parallel_merge_sort_c $(LDFLAGS)
 
 build_cs:
-	$(DOTNET) build $(CSPROJ) -c Release -o ../$(BUILD_DIR)/parallel_merge_sort_cs
+	$(DOTNET) build $(CSPROJ) -c Release \
+	      -o ../$(BUILD_DIR)/parallel_merge_sort_cs
 
 build_rs:
 	cd $(CARGO_TGT) && $(CARGO) build --release
-	ln -f $(CARGO_TGT)/target/release/merge_sort_perf \
-	      $(BUILD_DIR)/parallel_merge_sort_rs
+	ln -f target/release/merge_sort_perf ../../../$(BUILD_DIR)/parallel_merge_sort_rs
 
 # -----------------------------------------------------------------------------
 # Initialize CSV/perf outputs
@@ -88,12 +86,11 @@ run:
 	@for lang in c cs rs; do \
 	  bin=$(BUILD_DIR)/parallel_merge_sort_$$lang; \
 	  if [ ! -x $$bin ]; then \
-	    echo "[!] Skipping $$lang (not built)"; \
-	    continue; \
+	    echo "[!] Skipping $$lang"; continue; \
 	  fi; \
 	  th_file=$(RESULTS_DIR)/throughput_$$lang.csv; \
 	  pf_file=$(PERF_DIR)/perf_$$lang.txt; \
-	  echo ">>> Running $$lang: threads=$(THREADS), sizes=$(SIZES) >>>"; \
+	  echo ">>> Running $$lang <<<"; \
 	  for t in $(THREADS); do \
 	    for s in $(SIZES); do \
 	      echo "-- threads=$$t size=$$s --" >> $$pf_file; \
@@ -102,15 +99,15 @@ run:
 	        { /usr/bin/perf stat -e $(EVENTS) \
 	            $$bin $$t $$s > /dev/null; } 2>> $$pf_file; \
 	      done; \
-	      secs=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file \
-	              | tail -n $(REPEAT) \
-	              | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
-	      if [ -z "$$secs" ]; then \
+	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file \
+	              | tail -n $(REPEAT)); \
+	      if [ -n "$$raw" ]; then \
+	        secs=$$(echo "$$raw" | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
+	      else \
 	        secs=$$( $$bin $$t $$s | awk -F, '{print $$3}' ); \
 	      fi; \
 	      mips=$$(awk "BEGIN{printf \"%.3f\", ($$s/$$secs)/1e6}"); \
 	      echo "$$t,$$s,$$secs,$$mips" >> $$th_file; \
 	    done; \
 	  done; \
-	  echo ">>> Finished $$lang <<<"; \
 	done

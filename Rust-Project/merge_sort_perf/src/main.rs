@@ -13,34 +13,35 @@ use merge_sort::parallel_merge_sort;
 fn main() {
     let (max_threads, array_size) = parse_input();
     let mut integers = read_integers();
+
     let pool = ThreadPoolBuilder::new()
         .num_threads(max_threads)
         .build()
         .unwrap();
+
     let start = Instant::now();
     pool.install(|| {
         parallel_merge_sort(&mut integers);
     });
     let duration = start.elapsed();
-    let last = 0;
-    for i in 0..array_size {
-        if (integers[i] < last) && (i > 0) {
-            eprintln!(
-                "Array is not sorted at index {}: {} < {}",
-                i, integers[i], last
-            );
+
+    // validate
+    for i in 1..integers.len() {
+        if integers[i] < integers[i-1] {
+            eprintln!("Array is not sorted at index {}: {} < {}", i, integers[i], integers[i-1]);
             process::exit(1);
         }
     }
+
     let secs = duration.as_secs_f64();
     let mips = (array_size as f64) / secs / 1_000_000.0;
     println!("{},{},{:.6},{:.3}", max_threads, array_size, secs, mips);
 }
 
 fn read_integers() -> Vec<u32> {
-    let path = PathBuf::from("..").join("..").join("random_integers.bin");
-    let file =
-        File::open(&path).unwrap_or_else(|_| panic!("Expected to find file {}", path.display()));
+    let path = PathBuf::from("random_integers.bin");
+    let file = File::open(&path)
+        .unwrap_or_else(|_| panic!("Expected to find file {}", path.display()));
     let mut reader = BufReader::new(file);
     let mut numbers = Vec::new();
     while let Ok(num) = reader.read_u32::<LittleEndian>() {
@@ -55,27 +56,13 @@ fn parse_input() -> (usize, usize) {
         eprintln!("Error: expected at least 2 arguments.");
         process::exit(1);
     }
-    let max_threads: usize = match args[1].parse() {
-        Ok(n) => n,
-        Err(_) => {
-            eprintln!("Error: '{}' is not a valid integer.", args[1]);
-            process::exit(1);
-        }
-    };
-    let array_size: usize = match args[2].parse() {
-        Ok(n) => n,
-        Err(_) => {
-            eprintln!("Error: '{}' is not a valid integer.", args[2]);
-            process::exit(1);
-        }
-    };
-    if max_threads <= 0 {
-        eprintln!("Error: expected a positive integer for max_threads.");
+    let max_threads: usize = args[1].parse().unwrap_or_else(|_| {
+        eprintln!("Error: '{}' is not a valid integer.", args[1]);
         process::exit(1);
-    }
-    if array_size <= 0 {
-        eprintln!("Error: expected a positive integer for array_size.");
+    });
+    let array_size: usize = args[2].parse().unwrap_or_else(|_| {
+        eprintln!("Error: '{}' is not a valid integer.", args[2]);
         process::exit(1);
-    }
+    });
     (max_threads, array_size)
 }
