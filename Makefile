@@ -92,7 +92,7 @@ run:
 	for lang in c cs rs; do \
 	  if [ "$$lang" = "cs" ]; then bin="$(BUILD_DIR)/parallel_merge_sort_cs.dll"; else bin="$(BUILD_DIR)/parallel_merge_sort_$$lang"; fi; \
 	  if [ ! -f $$bin ]; then echo "[!] Skipping $$lang"; continue; fi; \
-	  echo ">>> Running $$lang <<<"; \
+	  echo ">>> Running $$lang <<<" ; \
 	  th_file="$(RESULTS_DIR)/throughput_$$lang.csv"; pf_file="$(PERF_DIR)/perf_$$lang.txt"; \
 	  for t in $(THREADS); do \
 	    for s in $(SIZES); do \
@@ -107,7 +107,7 @@ run:
 	      done; \
 	      raw=$$(grep -Po '(?<=seconds time elapsed\W)\d+\.\d+' $$pf_file | tail -n $(REPEAT)); \
 	      if [ -n "$$raw" ]; then \
-	        secs=$$(echo "$$raw" | awk '{sum+=$$1} END{printf "%.6f", sum/NR}'); \
+	        secs=$$(echo "$$raw" | awk '{sum+=$1} END{printf "%.6f", sum/NR}'); \
 	      else \
 	        if [ "$$lang" = "cs" ]; then \
 	          secs=$$(dotnet $$bin $$t $$s | awk -F, '{print $$3}'); \
@@ -115,7 +115,7 @@ run:
 	          secs=$$($$bin $$t $$s | awk -F, '{print $$3}'); \
 	        fi; \
 	      fi; \
-	      mips=$$(awk -v s=$$s -v secs=$$secs 'BEGIN{printf "%.3f", (s/secs)/1e6}'); \
+	      mips=$$(echo "$$s $$secs" | awk '{printf "%.3f", ($$1/$$2)/1e6}'); \
 	      echo "$$t,$$s,$$secs,$$mips" >> $$th_file; \
 	    done; \
 	  done; \
