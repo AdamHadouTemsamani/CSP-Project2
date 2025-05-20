@@ -1,38 +1,58 @@
 #include "merge_sort.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <omp.h>
 
-void merge(uint32_t *a, size_t left, size_t mid, size_t right) {
-    size_t n1 = mid - left;
-    size_t n2 = right - mid;
-    uint32_t *L = malloc(n1 * sizeof *L);
-    uint32_t *R = malloc(n2 * sizeof *R);
+/* When subarray length >= TASK_THRESH, we spawn true tasks;
+   below that we recurse serially to avoid overhead. */
+#define TASK_THRESH 20000
 
-    memcpy(L, &a[left], n1 * sizeof *L);
-    memcpy(R, &a[mid],  n2 * sizeof *R);
+/* One big scratch buffer of size n, allocated once. */
+static uint32_t *scratch = NULL;
 
-    size_t i = 0, j = 0, k = left;
-    while (i < n1 && j < n2) {
-        a[k++] = (L[i] <= R[j]) ? L[i++] : R[j++];
+void parallel_merge_sort_init(size_t n) {
+    scratch = malloc(n * sizeof *scratch);
+    if (!scratch) {
+        perror("malloc scratch");
+        exit(EXIT_FAILURE);
     }
-    while (i < n1) a[k++] = L[i++];
-    while (j < n2) a[k++] = R[j++];
-    free(L);
-    free(R);
 }
 
-void parallel_merge_sort_omp(uint32_t *a, size_t left, size_t right) {
-    if (right - left <= 1) return;
+void parallel_merge_sort_fini(void) {
+    free(scratch);
+    scratch = NULL;
+}
 
-    size_t mid = left + (right - left) / 2;
+/* Merge a[left..mid) with a[mid..right) into scratch and copy back */
+static void merge_range(uint32_t *a, size_t left, size_t mid, size_t right) {
+    size_t i = left, j = mid, k = left;
+    while (i < mid && j < right) {
+        scratch[k++] = (a[i] <= a[j]) ? a[i++] : a[j++];
+    }
+    while (i < mid)  scratch[k++] = a[i++];
+    while (j < right) scratch[k++] = a[j++];
+    memcpy(a + left, scratch + left, (right - left) * sizeof *a);
+}
 
-    #pragma omp task shared(a) if (right - left > MERGE_SORT_OMP_THRESHOLD)
-    parallel_merge_sort_omp(a, left, mid);
+/* Internal recursive sorter on a[left..right) */
+static void do_sort(uint32_t *a, size_t left, size_t right) {
+    size_t len = right - left;
+    if (len <= 1) return;
 
-    #pragma omp task shared(a) if (right - left > MERGE_SORT_OMP_THRESHOLD)
-    parallel_merge_sort_omp(a, mid, right);
+    size_t mid = left + len/2;
+
+    #pragma omp task shared(a)
+    do_sort(a, left,  mid);
+
+    #pragma omp task shared(a)
+    do_sort(a, mid, right);
 
     #pragma omp taskwait
-    merge(a, left, mid, right);
+
+    merge_range(a, left, mid, right);
+}
+
+void parallel_merge_sort(uint32_t *a, size_t n) {
+    do_sort(a, 0, n);
 }
