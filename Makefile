@@ -41,7 +41,7 @@ GC_CS        := $(PERF_DIR)/gc_cs.csv
 THREADS := 1 2 4 8 16 32
 SIZES   := 256 1024 4096 16384 65536 262144 1048576 4194304 16777216
 REPEAT  := 5
-EVENTS  := cpu-cycles,instructions,cache-misses,LLC-load-misses, \
+EVENTS  := cpu-cycles,instructions,cache-misses,LLC-load-misses,\
             dTLB-load-misses,branch-misses,context-switches
 
 .PHONY: all clean prepare_dirs build_c build_cs build_rs init_outputs run
@@ -100,14 +100,18 @@ run:
 	for lang in c cs rs; do \
 	  if [ "$$lang" = "c" ]; then \
 	    run_cmd="$(BUILD_DIR)/parallel_merge_sort_c"; \
-	    th_file="$(TH_C)";      pf_file="$(PF_C)"; \
+	    th_file="$(TH_C)";  pf_file="$(PF_C)"; \
 	  elif [ "$$lang" = "cs" ]; then \
 	    run_cmd="dotnet $(BUILD_DIR)/parallel_merge_sort_cs.dll"; \
-	    th_file="$(TH_CS)";     pf_file="$(PF_CS)"; \
+	    th_file="$(TH_CS)"; pf_file="$(PF_CS)"; \
 	    th_gc_file="$(TH_CS_GC)"; pf_gc_file="$(PF_CS_GC)"; gc_file="$(GC_CS)"; \
 	  else \
 	    run_cmd="$(BUILD_DIR)/parallel_merge_sort_rs"; \
-	    th_file="$(TH_RS)";     pf_file="$(PF_RS)"; \
+	    th_file="$(TH_RS)"; pf_file="$(PF_RS)"; \
+	  fi; \
+	  if [ ! -x "$$run_cmd" ]; then \
+	    echo "[!] Skipping $$lang (executable not found)" ;\
+	    continue; \
 	  fi; \
 	  echo ">>> Running $$lang <<<"; \
 	  for t in $(THREADS); do \
@@ -118,15 +122,15 @@ run:
 	        /usr/bin/perf stat -e $(EVENTS) $$run_cmd $$t $$s \
 	          2>>"$$pf_file" \
 	          | tee -a "$$th_file"; \
-\
 	        if [ "$$lang" = "cs" ]; then \
 	          echo "[run $$rep]:" >> "$$pf_gc_file"; \
-	          /usr/bin/perf stat -e $(EVENTS) dotnet-counters collect \
-	            --format csv \
-	            --counters System.Runtime \
-	            --refresh-interval 1 \
-	            --output "$$gc_file" \
-	            -- $$run_cmd $$t $$s \
+	          /usr/bin/perf stat -e $(EVENTS) \
+	            dotnet-counters collect \
+	              --format csv \
+	              --counters System.Runtime \
+	              --refresh-interval 1 \
+	              --output "$$gc_file" \
+	              -- $$run_cmd $$t $$s \
 	            2>>"$$pf_gc_file" \
 	            | tee -a "$$th_gc_file"; \
 	        fi; \
