@@ -98,7 +98,7 @@ init_outputs:
 # -----------------------------------------------------------------------------
 run:
 	for lang in c cs rs; do \
-	  if   [ "$$lang" = "c"  ]; then \
+	  if [ "$$lang" = "c" ]; then \
 	    run_cmd="$(BUILD_DIR)/parallel_merge_sort_c"; \
 	    th_file="$(TH_C)"; pf_file="$(PF_C)"; \
 	  elif [ "$$lang" = "cs" ]; then \
@@ -108,13 +108,6 @@ run:
 	  else \
 	    run_cmd="$(BUILD_DIR)/parallel_merge_sort_rs"; \
 	    th_file="$(TH_RS)"; pf_file="$(PF_RS)"; \
-	  fi; \
-\
-	  # existence check
-	  if ! command -v $$(echo $$run_cmd | awk '{print $$1}') >/dev/null 2>&1 \
-	     && [ ! -x "$$run_cmd" ]; then \
-	    echo "[!] Skipping $$lang (not found or not executable)"; \
-	    continue; \
 	  fi; \
 \
 	  echo ">>> Running $$lang <<<"; \
@@ -129,17 +122,18 @@ run:
 	          2>>"$$pf_file" \
 	          | tee -a "$$th_file"; \
 \
-	        # and GC/second pass for C# only
+	        # GC‐instrumented pass for C# only
 	        if [ "$$lang" = "cs" ]; then \
 	          echo "[run $$rep]:" >> "$$pf_gc_file"; \
-	          /usr/bin/perf stat -e $(EVENTS) dotnet-counters collect \
-	            --format csv \
-	            --counters System.Runtime \
-	            --refresh-interval 1 \
-	            --output "$$gc_file" \
-	            -- $$run_cmd $$t $$s \
+	          /usr/bin/perf stat -e $(EVENTS) \
+	            dotnet-counters collect \
+	              --format csv \
+	              --counters System.Runtime \
+	              --refresh-interval 1 \
+	              --output "$$gc_file" \
+	              -- $$run_cmd $$t $$s \
 	            2>>"$$pf_gc_file" \
-	            | tee -a "$$th_gc_file"; \
+	          | tee -a "$$th_gc_file"; \
 	        fi; \
 \
 	      done; \
