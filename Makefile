@@ -64,17 +64,13 @@ build_cs:
 	$(DOTNET) publish $(CSPROJ) \
 	    -c Release --no-self-contained \
 	    -o $(BUILD_DIR)
-	ln -f $(BUILD_DIR)/MergeSortPerf.dll \
-	      $(BUILD_DIR)/parallel_merge_sort_cs.dll
-	cp $(BUILD_DIR)/MergeSortPerf.runtimeconfig.json \
-	   $(BUILD_DIR)/parallel_merge_sort_cs.runtimeconfig.json
-	cp $(BUILD_DIR)/MergeSortPerf.deps.json \
-	   $(BUILD_DIR)/parallel_merge_sort_cs.deps.json
+	# Symlink native host stub for easy invocation
+	ln -f $(BUILD_DIR)/MergeSortPerf $(BUILD_DIR)/parallel_merge_sort_cs
 
 build_rs:
-	cd $(CARGO_TGT) && $(CARGO) build --release \
-	  && ln -f target/release/merge_sort_perf \
-	         $(abspath $(BUILD_DIR)/parallel_merge_sort_rs)
+	cd $(CARGO_TGT) && $(CARGO) build --release
+	ln -f $(CARGO_TGT)/target/release/merge_sort_perf \
+	      $(BUILD_DIR)/parallel_merge_sort_rs
 
 # -----------------------------------------------------------------------------
 # Initialize CSV & perf logs
@@ -96,39 +92,40 @@ init_outputs:
 run:
 	for lang in c cs rs; do \
 	  if [ "$$lang" = "c" ]; then \
-	    run_cmd="$(abspath $(BUILD_DIR)/parallel_merge_sort_c)"; \
-	    th_file="$(abspath $(TH_C))"; \
-	    pf_file="$(abspath $(PF_C))"; \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_c"; \
+	    th="$(TH_C)"; pf="$(PF_C)"; \
 	  elif [ "$$lang" = "cs" ]; then \
-	    run_cmd="dotnet $(abspath $(BUILD_DIR)/parallel_merge_sort_cs.dll)"; \
-	    th_file="$(abspath $(TH_CS))"; \
-	    pf_file="$(abspath $(PF_CS))"; \
-	    th_gc="$(abspath $(TH_CS_GC))"; \
-	    pf_gc="$(abspath $(PF_CS_GC))"; \
-	    gc_file="$(abspath $(GC_CS))"; \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_cs"; \
+	    th="$(TH_CS)"; pf="$(PF_CS)"; \
+	    th_gc="$(TH_CS_GC)"; pf_gc="$(PF_CS_GC)"; \
+	    gc_csv="$(GC_CS)"; \
 	  else \
-	    run_cmd="$(abspath $(BUILD_DIR)/parallel_merge_sort_rs)"; \
-	    th_file="$(abspath $(TH_RS))"; \
-	    pf_file="$(abspath $(PF_RS))"; \
+	    bin="$(BUILD_DIR)/parallel_merge_sort_rs"; \
+	    th="$(TH_RS)"; pf="$(PF_RS)"; \
+	  fi; \
+	  if [ ! -x $$bin ]; then \
+	    echo "[!] Skipping $$lang (no binary)"; \
+	    continue; \
 	  fi; \
 	  echo ">>> Running $$lang <<<"; \
 	  for t in $(THREADS); do \
 	    for s in $(SIZES); do \
-	      echo "-- threads=$$t size=$$s --" >> $$pf_file; \
+	      echo "-- threads=$$t size=$$s --" >> $$pf; \
 	      for rep in $$(seq 1 $(REPEAT)); do \
-	        echo "[run $$rep]:" >> $$pf_file; \
-	        /usr/bin/perf stat -e $(EVENTS) $$run_cmd $$t $$s \
-	          2>>$$pf_file \
-	          | tee -a $$th_file; \
+	        echo "[run $$rep]:" >> $$pf; \
+	        # 1) perf + throughput
+	        /usr/bin/perf stat -e $(EVENTS) $$bin $$t $$s \
+	          2>>$$pf \
+	          | tee -a $$th; \
+	        # 2) if C#, also capture GC counters
 	        if [ "$$lang" = "cs" ]; then \
 	          echo "[run $$rep]:" >> $$pf_gc; \
-	          /usr/bin/perf stat -e $(EVENTS) \
-	            dotnet-counters collect \
-	              --format csv \
-	              --counters System.Runtime \
-	              --refresh-interval 1 \
-	              --output $$gc_file \
-	              -- $$run_cmd $$t $$s \
+	          dotnet-counters collect \
+	            --format csv \
+	            --counters System.Runtime \
+	            --refresh-interval 1 \
+	            --output $$gc_csv \
+	            -- $$bin $$t $$s \
 	            2>>$$pf_gc \
 	            | tee -a $$th_gc; \
 	        fi; \
