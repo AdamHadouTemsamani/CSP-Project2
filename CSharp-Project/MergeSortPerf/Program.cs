@@ -17,9 +17,12 @@ namespace MergeSortPerf
                 return;
             }
 
-            if (!int.TryParse(args[0], out int maxThreads) 
-             || !int.TryParse(args[1], out int arraySize)
-             || maxThreads < 1 || arraySize < 1)
+            if (
+                !int.TryParse(args[0], out int maxThreads)
+                || !int.TryParse(args[1], out int arraySize)
+                || maxThreads < 1
+                || arraySize < 1
+            )
             {
                 Console.Error.WriteLine("Invalid arguments");
                 return;
@@ -59,8 +62,9 @@ namespace MergeSortPerf
 
             ValidateSorted(arrSteady);
 
-            Print("cold",   maxThreads, arraySize, swCold.Elapsed.TotalSeconds);
+            Print("cold", maxThreads, arraySize, swCold.Elapsed.TotalSeconds);
             Print("steady", maxThreads, arraySize, swSteady.Elapsed.TotalSeconds);
+            Thread.Sleep(1005);
         }
 
         static void Print(string phase, int threads, int size, double secs)

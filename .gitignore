@@ -503,3 +503,8 @@ CSharp-Project/.idea/
 
 .DS_Store
 *.bin
+
+# Outputs
+build/
+perf/
+results/
