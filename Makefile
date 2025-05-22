@@ -3,9 +3,9 @@ SHELL := /bin/bash
 # -----------------------------------------------------------------------------
 # Compiler/tool definitions
 # -----------------------------------------------------------------------------
-CC        := gcc
-CFLAGS    := -Wall -Wextra -O3 -g -fopenmp
-LDFLAGS   := -fopenmp
+CXX       := g++
+CXXFLAGS  := -Wall -Wextra -O3 -g -std=c++17
+LDLIBS    := -ltbb
 
 DOTNET    := dotnet
 CSPROJ    := CSharp-Project/MergeSortPerf/MergeSortPerf.csproj
@@ -23,14 +23,12 @@ RESULTS_DIR := results
 PERF_DIR    := perf
 GC_DIR      := perf/gc
 
-THROUGHPUT_C     := $(RESULTS_DIR)/throughput_c.csv
+THROUGHPUT_CPP   := $(RESULTS_DIR)/throughput_cpp.csv
 THROUGHPUT_CS    := $(RESULTS_DIR)/throughput_cs.csv
-THROUGHPUT_CS_GC := $(RESULTS_DIR)/throughput_cs_gc.csv
 THROUGHPUT_RS    := $(RESULTS_DIR)/throughput_rs.csv
 
-PERF_C     := $(PERF_DIR)/perf_c.txt
+PERF_CPP   := $(PERF_DIR)/perf_cpp.txt
 PERF_CS    := $(PERF_DIR)/perf_cs.txt
-PERF_CS_GC := $(PERF_DIR)/perf_cs_gc.txt
 PERF_RS    := $(PERF_DIR)/perf_rs.txt
 
 GC_CS := $(GC_DIR)/gc_cs
@@ -39,13 +37,13 @@ GC_CS := $(GC_DIR)/gc_cs
 # Experiment parameters
 # -----------------------------------------------------------------------------
 THREADS := 1 2 4 8 16 32
-SIZES   := 256 1024 4096 16384 65536 262144 1048576 4194304 16777216
+SIZES   := 512 4096 32768 262144 2097152 16777216 134217728 1073741824
 REPEAT  := 5
 EVENTS  := cpu-cycles,instructions,cache-misses,LLC-load-misses,dTLB-load-misses,branch-misses,context-switches
 
-.PHONY: all clean prepare_dirs build_c build_cs build_rs init_outputs run
+.PHONY: all clean prepare_dirs build_cpp build_cs build_rs init_outputs run
 
-all: prepare_dirs build_c build_cs build_rs init_outputs run
+all: prepare_dirs build_cpp build_cs build_rs init_outputs run
 
 clean:
 	rm -rf $(BUILD_DIR) $(RESULTS_DIR) $(PERF_DIR) $(GC_DIR)
@@ -58,9 +56,9 @@ prepare_dirs:
 # -----------------------------------------------------------------------------
 # Build rules
 # -----------------------------------------------------------------------------
-build_c:
-	$(CC) $(CFLAGS) C-Project/main.c C-Project/merge_sort.c \
-	    -o $(BUILD_DIR)/parallel_merge_sort_c $(LDFLAGS)
+build_cpp:
+	$(CXX) $(CXXFLAGS) CPP-Project/main.cpp CPP-Project/merge_sort.cpp \
+	    -o $(BUILD_DIR)/parallel_merge_sort_cpp $(LDLIBS)
 
 build_cs:
 	$(DOTNET) publish $(CSPROJ) \
@@ -77,13 +75,11 @@ build_rs:
 # Initialize CSV & perf logs
 # -----------------------------------------------------------------------------
 init_outputs:
-	@echo "phase,threads,size,seconds,mips" > $(THROUGHPUT_C)
+	@echo "phase,threads,size,seconds,mips" > $(THROUGHPUT_CPP)
 	@echo "phase,threads,size,seconds,mips" > $(THROUGHPUT_CS)
-	@echo "phase,threads,size,seconds,mips" > $(THROUGHPUT_CS_GC)
 	@echo "phase,threads,size,seconds,mips" > $(THROUGHPUT_RS)
-	@echo "# perf log for C"                > $(PERF_C)
+	@echo "# perf log for C"                > $(PERF_CPP)
 	@echo "# perf log for C#"               > $(PERF_CS)
-	@echo "# perf log for C# (GC)"          > $(PERF_CS_GC)
 	@echo "# perf log for Rust"             > $(PERF_RS)
 	@echo "timestamp,counter_name,value"    > $(GC_CS)
 
@@ -92,11 +88,11 @@ init_outputs:
 # -----------------------------------------------------------------------------
 run:
 	set -euo pipefail
-	for lang in c rs cs; do \
-		if [ "$$lang" = "c" ]; then \
-			bin="$(BUILD_DIR)/parallel_merge_sort_c"; \
-			throughput="$(THROUGHPUT_C)"; \
-			perf="$(PERF_C)"; \
+	for lang in cpp rs cs; do \
+		if [ "$$lang" = "cpp" ]; then \
+			bin="$(BUILD_DIR)/parallel_merge_sort_cpp"; \
+			throughput="$(THROUGHPUT_CPP)"; \
+			perf="$(PERF_CPP)"; \
 		elif [ "$$lang" = "rs" ]; then \
 			bin="$(BUILD_DIR)/parallel_merge_sort_rs"; \
 			throughput="$(THROUGHPUT_RS)"; \

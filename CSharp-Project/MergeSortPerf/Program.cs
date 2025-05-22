@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 
@@ -11,6 +12,8 @@ namespace MergeSortPerf
 
         public static void Main(string[] args)
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+
             if (args.Length < 2)
             {
                 Console.Error.WriteLine("Usage: MergeSortPerf <maxThreads> <arraySize>");
@@ -39,7 +42,13 @@ namespace MergeSortPerf
                 return;
             }
 
-            var raw = File.ReadAllBytes(path);
+            var raw = new byte[arraySize * 4];
+
+            using (var fileStream = File.OpenRead(path))
+            {
+                fileStream.ReadExactly(raw);
+            }
+
             if (raw.Length < arraySize * 4)
             {
                 Console.Error.WriteLine("Size mismatch");
@@ -64,6 +73,7 @@ namespace MergeSortPerf
 
             Print("cold", maxThreads, arraySize, swCold.Elapsed.TotalSeconds);
             Print("steady", maxThreads, arraySize, swSteady.Elapsed.TotalSeconds);
+            Thread.Sleep(1000);
         }
 
         static void Print(string phase, int threads, int size, double secs)
