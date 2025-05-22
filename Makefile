@@ -37,8 +37,8 @@ GC_CS := $(GC_DIR)/gc_cs
 # Experiment parameters
 # -----------------------------------------------------------------------------
 THREADS := 1 2 4 8 16 32
-SIZES   := 512 4096 32768 262144 2097152 16777216 134217728 1073741824
-REPEAT  := 5
+SIZES   := 4096 16384 65536 262144 1048576 4194304 16777216 67108864
+REPEAT  := 3
 EVENTS  := cpu-cycles,instructions,cache-misses,LLC-load-misses,dTLB-load-misses,branch-misses,context-switches
 
 .PHONY: all clean prepare_dirs build_cpp build_cs build_rs init_outputs run
@@ -124,7 +124,7 @@ run:
 							--format csv \
 							--counters System.Runtime \
 							--output $${gc}_$${rep}_$${threads}_$${size}.csv \
-							-- $$bin $$threads $$size \
+							-- $$bin $$threads $$size skipSteady \
 							2>>"$$perf_gc" \
 							| tee -a $$throughput_gc; \
 					fi; \

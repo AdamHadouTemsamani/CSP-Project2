@@ -13,11 +13,20 @@ namespace MergeSortPerf
         public static void Main(string[] args)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            var skipSteady = false;
 
             if (args.Length < 2)
             {
                 Console.Error.WriteLine("Usage: MergeSortPerf <maxThreads> <arraySize>");
                 return;
+            }
+
+            if (args.Length >= 3)
+            {
+                if (args[2].Equals("skipSteady", StringComparison.OrdinalIgnoreCase))
+                {
+                    skipSteady = true;
+                }
             }
 
             if (
@@ -66,13 +75,19 @@ namespace MergeSortPerf
 
             var arrSteady = (uint[])master.Clone();
             var swSteady = Stopwatch.StartNew();
-            MergeSorter.SortAsync(arrSteady).GetAwaiter().GetResult();
+            if (!skipSteady)
+            {
+                MergeSorter.SortAsync(arrSteady).GetAwaiter().GetResult();
+            }
             swSteady.Stop();
 
             ValidateSorted(arrSteady);
 
             Print("cold", maxThreads, arraySize, swCold.Elapsed.TotalSeconds);
-            Print("steady", maxThreads, arraySize, swSteady.Elapsed.TotalSeconds);
+            if (!skipSteady)
+            {
+                Print("steady", maxThreads, arraySize, swSteady.Elapsed.TotalSeconds);
+            }
             Thread.Sleep(1000);
         }
 
