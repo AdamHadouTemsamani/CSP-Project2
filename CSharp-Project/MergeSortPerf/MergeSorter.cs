@@ -13,11 +13,8 @@ public static class MergeSorter
 
         var mid = left + (right - left) / 2;
 
-        // Yield to enable concurrent computation
-        await Task.Yield();
-
-        var leftTask = MergeSortAsync(arr, left, mid);
-        var rightTask = MergeSortAsync(arr, mid + 1, right);
+        var leftTask = Task.Run(() => MergeSortAsync(arr, left, mid));
+        var rightTask = Task.Run(() => MergeSortAsync(arr, mid + 1, right));
 
         await Task.WhenAll(leftTask, rightTask);
         Merge(arr, left, mid, right);
