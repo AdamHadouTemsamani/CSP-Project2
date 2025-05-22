@@ -39,7 +39,13 @@ namespace MergeSortPerf
                 return;
             }
 
-            var raw = File.ReadAllBytes(path);
+            var raw = new byte[arraySize * 4];
+
+            using (var fileStream = File.OpenRead(path))
+            {
+                fileStream.ReadExactly(raw);
+            }
+
             if (raw.Length < arraySize * 4)
             {
                 Console.Error.WriteLine("Size mismatch");
