@@ -39,7 +39,6 @@ int main(int argc, char **argv) {
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
-    // Kick off the parallel sort (single root task)
     parallel_merge_sort(a, n);
 
     clock_gettime(CLOCK_MONOTONIC, &t1);

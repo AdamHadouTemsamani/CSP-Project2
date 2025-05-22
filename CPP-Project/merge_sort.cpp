@@ -4,49 +4,40 @@
 #include <cmath>
 #include <tbb/task_group.h>
 
-#define TASK_THRESH 20000
+static void merge_range(uint32_t *a, size_t left, size_t mid, size_t right) {
+size_t n1 = mid - left;
+    size_t n2 = right - mid;
 
-static uint32_t *scratch = nullptr;
-
-void parallel_merge_sort_init(size_t n) {
-    scratch = (uint32_t*)std::malloc(n * sizeof *scratch);
-    if (!scratch) {
-        perror("malloc scratch");
+    uint32_t* L = (uint32_t*) std::malloc(n1 * sizeof(uint32_t));
+    uint32_t* R = (uint32_t*) std::malloc(n2 * sizeof(uint32_t));
+    if (!L || !R) {
+        std::fprintf(stderr, "malloc failed in merge_range\n");
         std::exit(EXIT_FAILURE);
     }
-}
 
-void parallel_merge_sort_fini(void) {
-    std::free(scratch);
-    scratch = nullptr;
-}
+    std::memcpy(L, a + left, n1 * sizeof(uint32_t));
+    std::memcpy(R, a + mid,  n2 * sizeof(uint32_t));
 
-static void merge_range(uint32_t *a, size_t left, size_t mid, size_t right) {
-    size_t i = left, j = mid, k = left;
-    while (i < mid && j < right) {
-        scratch[k++] = (a[i] <= a[j]) ? a[i++] : a[j++];
+    size_t i = 0, j = 0, k = left;
+    while (i < n1 && j < n2) {
+        a[k++] = (L[i] <= R[j]) ? L[i++] : R[j++];
     }
-    while (i < mid)  scratch[k++] = a[i++];
-    while (j < right) scratch[k++] = a[j++];
-    std::memcpy(a + left, scratch + left, (right - left) * sizeof *a);
+    while (i < n1) a[k++] = L[i++];
+    while (j < n2) a[k++] = R[j++];
+
+    std::free(L);
+    std::free(R);
 }
 
 static void do_sort(uint32_t *a, size_t left, size_t right) {
-    size_t len = right - left;
-    if (len <= 1) return;
+    if (right - left <= 1) return;
 
-    size_t mid = left + len/2;
+    size_t mid = left + (right - left) / 2;
 
-    if (len >= TASK_THRESH) {
-        tbb::task_group tg;
-        tg.run([&]{ do_sort(a, left,  mid); });
-        tg.run([&]{ do_sort(a, mid,   right); });
-        tg.wait();
-    } else {
-        // serial recursion below threshold
-        do_sort(a, left,  mid);
-        do_sort(a, mid,   right);
-    }
+    tbb::task_group tg;
+    tg.run([&] { do_sort(a, left, mid); });
+    tg.run([&] { do_sort(a, mid, right); });
+    tg.wait();
 
     merge_range(a, left, mid, right);
 }
