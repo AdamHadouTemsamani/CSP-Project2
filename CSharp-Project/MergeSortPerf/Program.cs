@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 
@@ -11,6 +12,8 @@ namespace MergeSortPerf
 
         public static void Main(string[] args)
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+
             if (args.Length < 2)
             {
                 Console.Error.WriteLine("Usage: MergeSortPerf <maxThreads> <arraySize>");
