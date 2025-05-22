@@ -64,7 +64,6 @@ namespace MergeSortPerf
 
             Print("cold", maxThreads, arraySize, swCold.Elapsed.TotalSeconds);
             Print("steady", maxThreads, arraySize, swSteady.Elapsed.TotalSeconds);
-            Thread.Sleep(1005);
         }
 
         static void Print(string phase, int threads, int size, double secs)
