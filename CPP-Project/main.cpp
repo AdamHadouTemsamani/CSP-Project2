@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <ctime>
 #include <tbb/global_control.h>
-#include "merge_sort.h"
+#include "merge_sort.hpp"
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -34,8 +34,6 @@ int main(int argc, char **argv) {
     }
     std::fclose(f);
 
-    parallel_merge_sort_init(n);
-
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
 
@@ -56,7 +54,6 @@ int main(int argc, char **argv) {
         }
     }        
 
-    parallel_merge_sort_fini();
     std::free(a);
     return EXIT_SUCCESS;
 }
