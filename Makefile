@@ -124,7 +124,7 @@ run:
 							--format csv \
 							--counters System.Runtime \
 							--output $${gc}_$${rep}_$${threads}_$${size}.csv \
-							-- $$bin $$threads $$size \
+							-- $$bin $$threads $$size skipSteady \
 							2>>"$$perf_gc" \
 							| tee -a $$throughput_gc; \
 					fi; \
