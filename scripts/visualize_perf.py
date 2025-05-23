@@ -1,111 +1,90 @@
 #!/usr/bin/env python3
+import os
+import glob
 import re
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import glob
-import os
 import math
 
-HEADER_RE = re.compile(r"-- threads=(\d+) size=(\d+) --")
-METRIC_RE = re.compile(r"([\d,]+)\s+(\S+)")
+PERF_DIR = "perf"
+OUT_DIR  = "images/perf"
+os.makedirs(OUT_DIR, exist_ok=True)
 
 def parse_perf_file(path):
-    """
-    Returns a DataFrame with columns: threads, size, metric, value
-    """
     records = []
-    current = {'threads': None, 'size': None}
-    in_block = False
-
+    current_threads = None
+    current_size = None
     with open(path) as f:
-        for raw in f:
-            line = raw.strip()
-            if not line:
-                continue
-
-            m = HEADER_RE.match(line)
+        for line in f:
+            line = line.strip()
+            m = re.match(r"-- threads=(\d+)\s+size=(\d+)", line)
             if m:
-                current['threads'] = int(m.group(1))
-                current['size']    = int(m.group(2))
-                in_block = False
+                current_threads = int(m.group(1))
+                current_size    = int(m.group(2))
                 continue
-
             if line.startswith("Performance counter stats"):
-                in_block = True
                 continue
-
-            if in_block:
-                if "seconds time elapsed" in line:
-                    in_block = False
-                    continue
-                m2 = METRIC_RE.search(line)
-                if m2:
-                    val    = float(m2.group(1).replace(",", ""))
-                    metric = m2.group(2)
-                    records.append({
-                        'threads': current['threads'],
-                        'size':    current['size'],
-                        'metric':  metric,
-                        'value':   val
-                    })
-
+            m2 = re.match(r"([\d,]+)\s+(\S+)", line)
+            if m2 and current_threads is not None:
+                val = float(m2.group(1).replace(",", ""))
+                met = m2.group(2)
+                records.append({
+                    "threads": current_threads,
+                    "size":    current_size,
+                    "metric":  met,
+                    "value":   val
+                })
     return pd.DataFrame(records)
 
+def plot_perf_for_file(txt_path):
+    label = os.path.splitext(os.path.basename(txt_path))[0]
+    df = parse_perf_file(txt_path)
+    if df.empty:
+        print(f"[perf] no data in {txt_path}")
+        return
 
-def plot_all_metrics(df, lang, output_file):
-    """
-    Given a perf-DataFrame for one language, plot every metric
-    in a grid of subplots, one line per thread count.
-    """
-    metrics = sorted(df['metric'].unique())
-    nmetrics = len(metrics)
+    metrics = sorted(m for m in df["metric"].unique() if m != "LLC-load-misses")
     ncols = 2
-    nrows = math.ceil(nmetrics / ncols)
+    nrows = math.ceil(len(metrics) / ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(ncols*5, nrows*4))
+    axes = axes.flatten()
 
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols,
-                             figsize=(ncols*5, nrows*4))
-    # flatten axes
-    axes_list = axes.flatten() if nrows*ncols > 1 else [axes]
-
-    for idx, metric in enumerate(metrics):
-        ax = axes_list[idx]
-        sub = df[df['metric'] == metric]
-        for t in sorted(sub['threads'].unique()):
-            tdf = sub[sub['threads'] == t]
-            mean = tdf.groupby('size')['value'].mean().reset_index()
-            ax.plot(mean['size'], mean['value'], marker='o', label=f"T={t}")
-        ax.set_xscale('log')
-        ax.set_title(metric)
-        ax.set_xlabel("Array size")
-        ax.set_ylabel("Count")
+    for idx, met in enumerate(metrics):
+        ax = axes[idx]
+        sub = df[df["metric"] == met]
+        for thr in sorted(sub["threads"].unique()):
+            grp = sub[sub["threads"] == thr] \
+                  .groupby("size", as_index=False)["value"] \
+                  .mean()
+            ax.plot(grp["size"], grp["value"],
+                    marker="o", label=f"{thr} threads")
+        ax.set_xscale("log", base=2)
+        ax.set_title(met)
+        ax.set_xlabel("Input size")
+        ax.set_ylabel("Value")
         ax.grid(True)
-        ax.legend(title="Threads", fontsize='small', loc='best')
+        ax.legend(fontsize="small")
 
-    # remove unused axes
-    for j in range(idx+1, len(axes_list)):
-        fig.delaxes(axes_list[j])
+    for j in range(idx+1, len(axes)):
+        fig.delaxes(axes[j])
 
-    fig.suptitle(f"Perf Counters – {lang.upper()}", fontsize=16)
-    fig.tight_layout(rect=[0,0.03,1,0.95])
-    plt.savefig(output_file, bbox_inches='tight')
-    plt.close()
+    fig.tight_layout(rect=[0, 0, 1, 1])
 
+    out_path = os.path.join(OUT_DIR, f"{label}.svg")
+    fig.savefig(out_path, format="svg")
+    plt.close(fig)
+    print(f"[perf] wrote {out_path}")
 
 def main():
-    perf_dir   = "perf"
-    output_dir = os.path.join("images", "perf")
-    os.makedirs(output_dir, exist_ok=True)
+    perf_files = sorted(glob.glob(os.path.join(PERF_DIR, "*.txt")))
+    if not perf_files:
+        print("[perf] no .txt files found")
+        return
 
-    for txt in glob.glob(os.path.join(perf_dir, "perf_*.txt")):
-        lang = os.path.basename(txt).replace("perf_", "").replace(".txt", "")
-        df   = parse_perf_file(txt)
-        if df.empty:
-            print(f"[!] no data in {txt}")
-            continue
-        out_svg = os.path.join(output_dir, f"{lang}_perf.svg")
-        print(f"Plotting all perf metrics for {lang} → {out_svg}")
-        plot_all_metrics(df, lang, out_svg)
-
+    for path in perf_files:
+        plot_perf_for_file(path)
 
 if __name__ == "__main__":
     main()
